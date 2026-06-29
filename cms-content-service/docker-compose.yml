@@ -1,0 +1,22 @@
+version: "3.9"
+
+services:
+  contentdb:
+    image: postgres:16-alpine
+    container_name: cms_contentdb
+    environment:
+      POSTGRES_DB: contentdb
+      POSTGRES_USER: cms_content
+      POSTGRES_PASSWORD: localpassword
+    ports:
+      - "5437:5432"       # host 5437 → container 5432
+    volumes:
+      - contentdb_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cms_content -d contentdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  contentdb_data:

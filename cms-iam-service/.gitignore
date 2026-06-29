@@ -1,0 +1,25 @@
+# compiled
+target/
+*.class
+
+# IntelliJ
+.idea/
+*.iml
+*.iws
+
+# Eclipse
+.classpath
+.project
+.settings/
+
+# VS Code
+.vscode/
+
+# Local config with secrets — NEVER commit
+application-local.yml
+*.env
+.env
+
+# OS
+.DS_Store
+Thumbs.db

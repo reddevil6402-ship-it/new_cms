@@ -1,0 +1,20 @@
+services:
+  notificationdb:
+    image: postgres:16-alpine
+    container_name: cms_notificationdb
+    environment:
+      POSTGRES_DB: notificationdb
+      POSTGRES_USER: cms_notification
+      POSTGRES_PASSWORD: localpassword
+    ports:
+      - "5439:5432"
+    volumes:
+      - notificationdb_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cms_notification -d notificationdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  notificationdb_data:

@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>CMS Search Service - Dev Console</title>
+    <style>
+        body { font-family: system-ui, -apple-system, sans-serif; margin: 40px; background: #f9fafb; color: #111827; }
+        h1 { color: #2563eb; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .log-container { background: #1f2937; color: #10b981; padding: 15px; border-radius: 6px; font-family: monospace; white-space: pre-wrap; height: 250px; overflow-y: auto; }
+        .btn { background: #2563eb; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
+        .btn:hover { background: #1d4ed8; }
+        .btn-danger { background: #ef4444; }
+        .btn-danger:hover { background: #dc2626; }
+        .status { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #10b981; margin-right: 5px; }
+        input[type="text"], select, textarea { padding: 8px; border: 1px solid #d1d5db; border-radius: 4px; width: 100%; margin-bottom: 10px; box-sizing: border-box; }
+        label { display: block; font-size: 12px; font-weight: 600; color: #4b5563; margin-bottom: 4px; text-transform: uppercase; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .hit-item { border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px; margin-bottom: 10px; background: #fcfcfc; }
+        .hit-item h4 { margin: 0 0 5px 0; color: #1e3a8a; }
+        .hit-meta { font-size: 11px; color: #6b7280; margin-bottom: 8px; }
+        .hit-tags { margin-top: 5px; }
+        .tag { display: inline-block; background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-size: 10px; margin-right: 4px; }
+    </style>
+</head>
+<body>
+
+    <h1><span class="status"></span> Search Service Dev Console</h1>
+
+    <div class="card">
+        <h3>1. Credentials</h3>
+        <div style="margin-bottom: 10px;">
+            <label>Auth JWT Token (from login)</label>
+            <input id="token-val" placeholder="eyJhbGciOiJSUzI1Ni..." oninput="parseToken()"/>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div>
+                <label>Tenant ID (X-Tenant-Id)</label>
+                <input id="tenant-id" placeholder="UUID format"/>
+            </div>
+            <div>
+                <label>User ID (X-User-Id)</label>
+                <input id="user-id" placeholder="UUID format"/>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid">
+        <div class="card">
+            <h3>2. Index Content Document</h3>
+            <form id="indexForm" onsubmit="event.preventDefault(); indexDocument();">
+                <label>Document UUID</label>
+                <input type="text" id="docId" required placeholder="UUID">
+                
+                <label>Content Title</label>
+                <input type="text" id="docTitle" required placeholder="e.g. Annual Tender Bid Notice 2026">
+                
+                <label>Slug</label>
+                <input type="text" id="docSlug" placeholder="e.g. annual-tender-bid-2026">
+                
+                <label>Content Type Code</label>
+                <input type="text" id="docType" value="article" required>
+                
+                <label>Site Code</label>
+                <input type="text" id="docSiteCode" value="main-site" required>
+                
+                <label>Status</label>
+                <select id="docStatus">
+                    <option value="PUBLISHED">PUBLISHED</option>
+                    <option value="DRAFT">DRAFT</option>
+                    <option value="IN_REVIEW">IN_REVIEW</option>
+                </select>
+                
+                <label>Tags (Comma separated)</label>
+                <input type="text" id="docTags" placeholder="tender, construction, 2026">
+                
+                <label>Body Fields (JSON Map)</label>
+                <textarea id="docBody" style="height: 80px; font-family: monospace;">{"summary": "Construction of new bypass bridge", "tender_value": 1500000}</textarea>
+                
+                <button type="submit" class="btn">Index Document</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <h3>3. Search Query</h3>
+            <form id="searchForm" onsubmit="event.preventDefault(); searchDocuments();">
+                <label>Keywords</label>
+                <input type="text" id="searchQuery" placeholder="e.g. bridge construction">
+                
+                <label>Filter: Site Code</label>
+                <input type="text" id="filterSiteCode" placeholder="e.g. main-site">
+                
+                <label>Filter: Status</label>
+                <input type="text" id="filterStatus" placeholder="e.g. PUBLISHED">
+                
+                <label>Filter: Content Type Code</label>
+                <input type="text" id="filterTypeCode" placeholder="e.g. article">
+                
+                <button type="submit" class="btn">Search</button>
+            </form>
+
+            <div style="margin-top: 20px;">
+                <h4>Search Results (<span id="totalHits">0</span> hits)</h4>
+                <div id="resultsList" style="max-height: 300px; overflow-y: auto;">
+                    <div style="color: #6b7280; font-size: 13px;">No search executed yet.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>Console Output</h3>
+        <div class="log-container" id="console">Console initialized. Enter token to proceed...</div>
+    </div>
+
+    <script>
+        function log(msg) {
+            const c = document.getElementById('console');
+            const time = new Date().toLocaleTimeString();
+            c.innerHTML += `\n[${time}] ${msg}`;
+            c.scrollTop = c.scrollHeight;
+        }
+
+        function decodeJwt(t) {
+            try {
+                const p = t.split('.')[1];
+                return JSON.parse(atob(p.replace(/-/g,'+').replace(/_/g,'/')));
+            } catch(e) { return null; }
+        }
+
+        function parseToken() {
+            const token = document.getElementById('token-val').value.trim();
+            if (!token) return;
+
+            const payload = decodeJwt(token);
+            if (payload) {
+                log(`✓ Token parsed — issued for ${payload.email} (${payload.tenantCode})`);
+                if (payload.tenantId) document.getElementById('tenant-id').value = payload.tenantId;
+                if (payload.userId) document.getElementById('user-id').value = payload.userId;
+                localStorage.setItem('accessToken', token);
+            } else {
+                log('✗ Invalid token format');
+            }
+        }
+
+        function generateDocId() {
+            const uuid = ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+                (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+            );
+            document.getElementById('docId').value = uuid;
+        }
+
+        window.onload = function() {
+            const savedToken = localStorage.getItem('accessToken') || '';
+            if (savedToken) {
+                document.getElementById('token-val').value = savedToken;
+                parseToken();
+            }
+            generateDocId();
+        }
+
+        function getHeaders() {
+            const token = document.getElementById('token-val').value.trim();
+            const tenantId = document.getElementById('tenant-id').value.trim();
+            const userId = document.getElementById('user-id').value.trim();
+
+            const headers = { 'Content-Type': 'application/json' };
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+            if (tenantId) headers['X-Tenant-Id'] = tenantId;
+            if (userId) headers['X-User-Id'] = userId;
+            return headers;
+        }
+
+        async function indexDocument() {
+            const headers = getHeaders();
+            if (!headers['X-Tenant-Id']) return log("✗ Tenant ID is required to index documents");
+
+            const id = document.getElementById('docId').value.trim();
+            const title = document.getElementById('docTitle').value.trim();
+            const slug = document.getElementById('docSlug').value.trim() || title.toLowerCase().replace(/ /g, '-');
+            const contentTypeCode = document.getElementById('docType').value.trim();
+            const siteCode = document.getElementById('docSiteCode').value.trim();
+            const status = document.getElementById('docStatus').value;
+            const tagsInput = document.getElementById('docTags').value;
+            const tags = tagsInput ? tagsInput.split(',').map(t => t.trim()) : [];
+            
+            let body = {};
+            try {
+                body = JSON.parse(document.getElementById('docBody').value);
+            } catch(e) {
+                return log("✗ Invalid JSON in Body Fields: " + e.message);
+            }
+
+            const payload = { id, title, slug, contentTypeCode, siteCode, status, tags, body };
+            log(`POST /api/v1/search/index (ID: ${id})`);
+
+            try {
+                const res = await fetch('/api/v1/search/index', {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify(payload)
+                });
+                
+                if (res.ok) {
+                    log("✓ Document indexed successfully!");
+                    generateDocId(); // Generate next random UUID
+                } else {
+                    const data = await res.json();
+                    log("✗ Indexing failed: " + JSON.stringify(data.error));
+                }
+            } catch (err) {
+                log("✗ Indexing error: " + err);
+            }
+        }
+
+        async function searchDocuments() {
+            const headers = getHeaders();
+            if (!headers['X-Tenant-Id']) return log("✗ Tenant ID is required to search");
+
+            const query = document.getElementById('searchQuery').value.trim();
+            const siteCode = document.getElementById('filterSiteCode').value.trim();
+            const status = document.getElementById('filterStatus').value.trim();
+            const contentTypeCode = document.getElementById('filterTypeCode').value.trim();
+
+            let url = new URL('/api/v1/search', window.location.origin);
+            if (query) url.searchParams.append('query', query);
+            if (siteCode) url.searchParams.append('siteCode', siteCode);
+            if (status) url.searchParams.append('status', status);
+            if (contentTypeCode) url.searchParams.append('contentTypeCode', contentTypeCode);
+
+            log(`GET ${url.pathname}${url.search}`);
+
+            try {
+                const res = await fetch(url, { headers });
+                const data = await res.json();
+                
+                if (res.ok && data.success) {
+                    const searchResp = data.data;
+                    document.getElementById('totalHits').textContent = searchResp.totalHits;
+                    log(`✓ Search completed. Hits: ${searchResp.totalHits}`);
+                    renderResults(searchResp.hits);
+                } else {
+                    log("✗ Search failed: " + JSON.stringify(data.error));
+                }
+            } catch (err) {
+                log("✗ Search error: " + err);
+            }
+        }
+
+        async function deleteIndexDoc(id) {
+            const headers = getHeaders();
+            if (!headers['X-Tenant-Id']) return log("✗ Tenant ID is required");
+            log(`DELETE /api/v1/search/index/${id}`);
+
+            try {
+                const res = await fetch(`/api/v1/search/index/${id}`, {
+                    method: 'DELETE',
+                    headers: headers
+                });
+                
+                if (res.ok) {
+                    log("✓ Document deleted from search index: " + id);
+                    searchDocuments();
+                } else {
+                    const data = await res.json();
+                    log("✗ Deletion failed: " + JSON.stringify(data.error));
+                }
+            } catch (err) {
+                log("✗ Deletion error: " + err);
+            }
+        }
+
+        function renderResults(hits) {
+            const container = document.getElementById('resultsList');
+            container.innerHTML = '';
+            
+            if (hits.length === 0) {
+                container.innerHTML = '<div style="color: #6b7280; font-size: 13px;">No results found.</div>';
+                return;
+            }
+
+            hits.forEach(hit => {
+                const tagsHtml = hit.tags && hit.tags.length 
+                    ? `<div class="hit-tags">${hit.tags.map(t => `<span class="tag">${t}</span>`).join('')}</div>` 
+                    : '';
+                
+                container.innerHTML += `
+                    <div class="hit-item">
+                        <h4>${hit.title}</h4>
+                        <div class="hit-meta">
+                            ID: ${hit.id} | Type: ${hit.contentTypeCode} | Site: ${hit.siteCode} | Status: ${hit.status}
+                        </div>
+                        <div style="font-size:12px; color:#4b5563; font-family:monospace; background:#f3f4f6; padding:6px; border-radius:4px; margin-top:5px; white-space:pre-wrap;">${JSON.stringify(hit.body)}</div>
+                        ${tagsHtml}
+                        <div style="margin-top: 10px; text-align: right;">
+                            <button onclick="deleteIndexDoc('${hit.id}')" style="background:#ef4444; color:white; border:none; padding:4px 8px; border-radius:4px; font-size:10px; cursor:pointer;">Delete from Index</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+version: "3.9"
+
+services:
+  schemadb:
+    image: postgres:16-alpine
+    container_name: cms_schemadb
+    environment:
+      POSTGRES_DB: schemadb
+      POSTGRES_USER: cms_schema
+      POSTGRES_PASSWORD: localpassword
+    ports:
+      - "5435:5432"       # host 5435 → container 5432
+    volumes:
+      - schemadb_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cms_schema -d schemadb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  schemadb_data:

@@ -1,0 +1,3034 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NextGen Enterprise CMS — Architecture Blueprint</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({ startOnLoad: true, theme: 'dark', securityLevel: 'loose',
+    themeVariables: { primaryColor: '#1e3a5f', primaryTextColor: '#e2e8f0', primaryBorderColor: '#3b82f6',
+      lineColor: '#64748b', secondaryColor: '#0f1f35', tertiaryColor: '#162032',
+      background: '#0a0f1a', mainBkg: '#1e3a5f', nodeBorder: '#3b82f6',
+      clusterBkg: '#0f1f35', titleColor: '#93c5fd', edgeLabelBackground: '#1e293b',
+      activeTaskBkgColor: '#1d4ed8', activeTaskBorderColor: '#3b82f6',
+      fontFamily: 'JetBrains Mono, monospace'
+    }
+  });
+  window.mermaid = mermaid;
+</script>
+<style>
+  @import url('https://fonts.googleapis.com/css2-family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg-primary:    #060c14;
+    --bg-secondary:  #0a1424;
+    --bg-card:       #0d1b2e;
+    --bg-code:       #0a0f1a;
+    --border:        #1e3a5f;
+    --border-bright: #2563eb;
+    --text-primary:  #e2e8f0;
+    --text-muted:    #64748b;
+    --text-dim:      #94a3b8;
+    --accent-blue:   #3b82f6;
+    --accent-cyan:   #06b6d4;
+    --accent-green:  #10b981;
+    --accent-amber:  #f59e0b;
+    --accent-red:    #ef4444;
+    --accent-purple: #8b5cf6;
+    --mono:          'JetBrains Mono', monospace;
+    --sans:          'Inter', system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.7;
+    min-height: 100vh;
+  }
+
+  /* ── L-YOUT ── */
+  .shell { display: flex; min-height: 100vh; }
+
+  /* ── SIDEB-R ── */
+  #sidebar {
+    width: 280px;
+    min-width: 280px;
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border);
+    position: fixed;
+    top: 0; left: 0;
+    height: 100vh;
+    overflow-y: auto;
+    z-index: 100;
+    transition: transform .25s ease;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  #sidebar::-webkit-scrollbar { width: 4px; }
+  #sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .sidebar-header {
+    padding: 24px 20px 16px;
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0;
+    background: var(--bg-secondary);
+    z-index: 10;
+  }
+  .sidebar-logo {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent-blue);
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .sidebar-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.4;
+  }
+
+  .nav-section { padding: 12px 0 4px; }
+  .nav-section-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 0 20px 6px;
+  }
+  .nav-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 20px;
+    font-size: 12.5px;
+    color: var(--text-dim);
+    text-decoration: none;
+    border-left: 2px solid transparent;
+    transition: all .15s;
+    cursor: pointer;
+  }
+  .nav-link:hover { color: var(--text-primary); background: rgba(59,130,246,.06); border-left-color: var(--accent-blue); }
+  .nav-link.active { color: var(--accent-blue); background: rgba(59,130,246,.1); border-left-color: var(--accent-blue); }
+  .nav-dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+    flex-shrink: 0;
+    opacity: .5;
+  }
+  .nav-link.active .nav-dot { opacity: 1; }
+
+  /* ── M-IN ── */
+  #main {
+    margin-left: 280px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* ── TOPB-R ── */
+  .topbar {
+    height: 56px;
+    background: rgba(6,12,20,.9);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 40px;
+    position: sticky; top: 0; z-index: 50;
+    backdrop-filter: blur(12px);
+  }
+  .topbar-breadcrumb {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: .06em;
+  }
+  .topbar-breadcrumb span { color: var(--accent-blue); }
+  .topbar-meta {
+    display: flex; gap: 16px; align-items: center;
+  }
+  .badge {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 3px;
+    letter-spacing: .06em;
+  }
+  .badge-blue   { background: rgba(59,130,246,.15); color: var(--accent-blue); border: 1px solid rgba(59,130,246,.25); }
+  .badge-green  { background: rgba(16,185,129,.15); color: var(--accent-green); border: 1px solid rgba(16,185,129,.25); }
+  .badge-purple { background: rgba(139,92,246,.15); color: var(--accent-purple); border: 1px solid rgba(139,92,246,.25); }
+
+  /* ── CONTENT ── */
+  #content { padding: 48px 56px 96px; max-width: 1040px; }
+
+  /* ── HERO ── */
+  .hero {
+    padding: 56px 0 48px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 56px;
+  }
+  .hero-eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent-cyan);
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  .hero-title {
+    font-size: 42px;
+    font-weight: 700;
+    line-height: 1.1;
+    color: #fff;
+    margin-bottom: 20px;
+    letter-spacing: -.02em;
+  }
+  .hero-title .highlight { color: var(--accent-blue); }
+  .hero-sub {
+    font-size: 16px;
+    color: var(--text-dim);
+    max-width: 640px;
+    line-height: 1.7;
+    margin-bottom: 32px;
+  }
+  .hero-stats {
+    display: flex; gap: 32px; flex-wrap: wrap;
+  }
+  .stat {
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .stat-value {
+    font-family: var(--mono);
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--accent-blue);
+    line-height: 1;
+  }
+  .stat-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: .05em;
+  }
+
+  /* ── T-BS ── */
+  .tab-bar {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 48px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tab-bar::-webkit-scrollbar { display: none; }
+  .tab-btn {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    padding: 14px 24px;
+    color: var(--text-muted);
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    transition: all .15s;
+    white-space: nowrap;
+    margin-bottom: -1px;
+  }
+  .tab-btn:hover { color: var(--text-primary); }
+  .tab-btn.active { color: var(--accent-blue); border-bottom-color: var(--accent-blue); }
+
+  .tab-pane { display: none; }
+  .tab-pane.active { display: block; }
+
+  /* ── SECTIONS ── */
+  .section {
+    margin-bottom: 64px;
+    scroll-margin-top: 72px;
+  }
+  .section-header {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    margin-bottom: 24px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-num {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent-blue);
+    opacity: .6;
+    letter-spacing: .08em;
+    min-width: 32px;
+  }
+  .section-title {
+    font-size: 22px;
+    font-weight: 600;
+    color: #fff;
+    letter-spacing: -.01em;
+  }
+
+  /* ── M-RKDOWN RENDERING ── */
+  .md-body h1 { font-size: 30px; font-weight: 700; color: #fff; margin: 0 0 24px; letter-spacing: -.02em; display: none; }
+  .md-body h2 {
+    font-size: 20px;
+    font-weight: 600;
+    color: #fff;
+    margin: 48px 0 16px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+    letter-spacing: -.01em;
+  }
+  .md-body h3 {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--accent-cyan);
+    margin: 32px 0 12px;
+    font-family: var(--mono);
+    letter-spacing: .03em;
+  }
+  .md-body h4 {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-dim);
+    margin: 24px 0 10px;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    font-family: var(--mono);
+  }
+  .md-body p { margin: 0 0 16px; color: var(--text-primary); }
+  .md-body strong { color: #fff; font-weight: 600; }
+  .md-body em { color: var(--accent-amber); font-style: italic; }
+
+  .md-body blockquote {
+    border-left: 3px solid var(--accent-blue);
+    padding: 14px 20px;
+    margin: 20px 0;
+    background: rgba(59,130,246,.06);
+    border-radius: 0 6px 6px 0;
+  }
+  .md-body blockquote p { color: var(--text-dim); margin: 0; }
+  .md-body blockquote strong { color: var(--accent-blue); }
+
+  .md-body ul, .md-body ol {
+    margin: 0 0 16px 24px;
+    color: var(--text-primary);
+  }
+  .md-body li { margin-bottom: 6px; }
+  .md-body li::marker { color: var(--accent-blue); }
+
+  .md-body code {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    background: rgba(59,130,246,.1);
+    color: var(--accent-cyan);
+    padding: 2px 6px;
+    border-radius: 3px;
+    border: 1px solid rgba(59,130,246,.2);
+  }
+
+  .md-body pre {
+    background: var(--bg-code);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin: 20px 0;
+    overflow: hidden;
+  }
+  .md-body pre code {
+    display: block;
+    padding: 20px 24px;
+    font-size: 12px;
+    line-height: 1.65;
+    background: transparent;
+    color: #e2e8f0;
+    border: none;
+    overflow-x: auto;
+    white-space: pre;
+  }
+
+  /* ── T-BLES ── */
+  .md-body table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    font-size: 13px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .md-body th {
+    background: rgba(59,130,246,.1);
+    color: var(--accent-blue);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  .md-body td {
+    padding: 11px 16px;
+    border-bottom: 1px solid rgba(30,58,95,.5);
+    color: var(--text-dim);
+    vertical-align: top;
+  }
+  .md-body tr:last-child td { border-bottom: none; }
+  .md-body tr:hover td { background: rgba(59,130,246,.04); }
+
+  /* ── MERM-ID DI-GR-MS ── */
+  .diagram-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin: 28px 0;
+    overflow: hidden;
+  }
+  .diagram-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(59,130,246,.05);
+  }
+  .diagram-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent-blue);
+    letter-spacing: .1em;
+    text-transform: uppercase;
+  }
+  .diagram-tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    background: rgba(30,58,95,.6);
+    padding: 2px 8px;
+    border-radius: 3px;
+  }
+  .diagram-body {
+    padding: 32px 24px;
+    overflow-x: auto;
+    display: flex;
+    justify-content: center;
+  }
+  .diagram-body .mermaid { max-width: 100%; }
+  .diagram-body svg { max-width: 100%; height: auto; }
+
+  /* ── ANTI-P-TTERN C-RDS ── */
+  .antipattern-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+    margin: 24px 0;
+  }
+  .antipattern-card {
+    background: var(--bg-card);
+    border: 1px solid rgba(239,68,68,.2);
+    border-left: 3px solid var(--accent-red);
+    border-radius: 8px;
+    padding: 18px;
+  }
+  .antipattern-num {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--accent-red);
+    letter-spacing: .1em;
+    margin-bottom: 8px;
+  }
+  .antipattern-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 8px;
+  }
+  .antipattern-desc {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+
+  /* ── SERVICE C-RDS ── */
+  .service-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 14px;
+    margin: 24px 0;
+  }
+  .service-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px;
+    transition: border-color .15s;
+  }
+  .service-card:hover { border-color: var(--accent-blue); }
+  .service-port {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--accent-green);
+    margin-bottom: 8px;
+  }
+  .service-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 6px;
+  }
+  .service-owns {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+
+  /* ── COST COMP-RISON TABLE ── */
+  .comparison-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 24px 0;
+    font-size: 13px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .comparison-table th {
+    padding: 12px 16px;
+    text-align: left;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+  }
+  .comparison-table th:first-child { background: rgba(30,58,95,.5); color: var(--text-dim); }
+  .comparison-table th.before { background: rgba(239,68,68,.1); color: var(--accent-red); }
+  .comparison-table th.after { background: rgba(16,185,129,.1); color: var(--accent-green); }
+  .comparison-table td { padding: 11px 16px; border-top: 1px solid rgba(30,58,95,.5); vertical-align: top; }
+  .comparison-table td:first-child { color: var(--text-dim); font-family: var(--mono); font-size: 12px; }
+  .comparison-table td.before { color: #fca5a5; background: rgba(239,68,68,.04); font-size: 12px; }
+  .comparison-table td.after { color: #6ee7b7; background: rgba(16,185,129,.04); font-size: 12px; }
+
+  /* ── AXIOM C-RDS ── */
+  .axiom-list { display: flex; flex-direction: column; gap: 16px; margin: 24px 0; }
+  .axiom-card {
+    background: var(--bg-card);
+    border: 1px solid rgba(6,182,212,.2);
+    border-left: 3px solid var(--accent-cyan);
+    border-radius: 8px;
+    padding: 18px 20px;
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+  }
+  .axiom-num {
+    font-family: var(--mono);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--accent-cyan);
+    opacity: .4;
+    line-height: 1;
+    min-width: 28px;
+  }
+  .axiom-body strong { color: var(--accent-cyan); display: block; margin-bottom: 6px; font-size: 14px; }
+  .axiom-body p { font-size: 13px; color: var(--text-muted); margin: 0; line-height: 1.6; }
+
+  /* ── DECISION TABLE ── */
+  .decision-grid { display: flex; flex-direction: column; gap: 12px; margin: 24px 0; }
+  .decision-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    display: grid;
+    grid-template-columns: 220px 1fr 1fr;
+    gap: 20px;
+    align-items: start;
+  }
+  .decision-name { font-size: 13px; font-weight: 600; color: var(--accent-blue); font-family: var(--mono); }
+  .decision-rationale { font-size: 12px; color: var(--text-dim); line-height: 1.5; }
+  .decision-tradeoff { font-size: 12px; color: var(--accent-amber); line-height: 1.5; }
+
+  /* ── SUMMARY C-LLOUT ── */
+  .callout {
+    background: linear-gradient(135deg, rgba(59,130,246,.1), rgba(6,182,212,.05));
+    border: 1px solid rgba(59,130,246,.3);
+    border-radius: 10px;
+    padding: 28px 32px;
+    margin: 32px 0;
+    position: relative;
+    overflow: hidden;
+  }
+  .callout::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent-blue), var(--accent-cyan));
+  }
+  .callout-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    color: var(--accent-cyan);
+    margin-bottom: 12px;
+  }
+  .callout-body { font-size: 14px; color: var(--text-dim); line-height: 1.7; }
+  .callout-body strong { color: #fff; }
+
+  /* ── MOBILE TOGGLE ── */
+  #menu-toggle {
+    display: none;
+    position: fixed;
+    top: 12px; left: 12px;
+    z-index: 200;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+  }
+
+  @media (max-width: 900px) {
+    #sidebar { transform: translateX(-100%); }
+    #sidebar.open { transform: translateX(0); }
+    #main { margin-left: 0; }
+    #content { padding: 24px 20px 80px; }
+    #menu-toggle { display: block; }
+    .topbar { padding: 0 16px 0 56px; }
+    .hero-title { font-size: 28px; }
+    .decision-card { grid-template-columns: 1fr; gap: 8px; }
+    .antipattern-grid { grid-template-columns: 1fr; }
+  }
+
+  /* hljs overrides */
+  .hljs { background: transparent !important; color: #e2e8f0 !important; }
+  .hljs-keyword { color: #93c5fd !important; }
+  .hljs-string  { color: #86efac !important; }
+  .hljs-comment { color: #64748b !important; }
+  .hljs-number  { color: #fbbf24 !important; }
+  .hljs-built_in { color: #67e8f9 !important; }
+  .hljs-title   { color: #c4b5fd !important; }
+  .hljs-attr    { color: #fb923c !important; }
+  .hljs-type    { color: #a78bfa !important; }
+</style>
+</head>
+<body>
+
+<button id="menu-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
+
+<div class="shell">
+
+<!-- ── SIDEB-R ── -->
+<nav id="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-logo">Architecture Blueprint</div>
+    <div class="sidebar-title">NextGen Enterprise CMS</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-label">Overview</div>
+    <a class="nav-link active" onclick="switchTab('arch'); scrollTo('hero')"><span class="nav-dot"></span>Introduction</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-label">Part I — Diagnosis</div>
+    <a class="nav-link" onclick="switchTab('arch'); scrollTo('sec-1')"><span class="nav-dot"></span>Root Disease</a>
+    <a class="nav-link" onclick="switchTab('arch'); scrollTo('sec-2')"><span class="nav-dot"></span>7 Anti-Patterns</a>
+    <a class="nav-link" onclick="switchTab('arch'); scrollTo('sec-3')"><span class="nav-dot"></span>Cost Analysis</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-label">Part II — Design</div>
+    <a class="nav-link" onclick="switchTab('arch'); scrollTo('sec-4')"><span class="nav-dot"></span>Target Architecture</a>
+    <a class="nav-link" onclick="switchTab('arch'); scrollTo('sec-5')"><span class="nav-dot"></span>Microservice Boundaries</a>
+    <a class="nav-link" onclick="switchTab('arch'); scrollTo('sec-6')"><span class="nav-dot"></span>Content Engine</a>
+    <a class="nav-link" onclick="switchTab('arch'); scrollTo('sec-7')"><span class="nav-dot"></span>Workflow Engine</a>
+    <a class="nav-link" onclick="switchTab('arch'); scrollTo('sec-8')"><span class="nav-dot"></span>Form Engine</a>
+    <a class="nav-link" onclick="switchTab('arch'); scrollTo('sec-9')"><span class="nav-dot"></span>Media Management</a>
+    <a class="nav-link" onclick="switchTab('arch'); scrollTo('sec-10')"><span class="nav-dot"></span>RBAC & Authorization</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-label">Part III — Infrastructure</div>
+    <a class="nav-link" onclick="switchTab('arch'); scrollTo('sec-11')"><span class="nav-dot"></span>Event-Driven Comms</a>
+    <a class="nav-link" onclick="switchTab('arch'); scrollTo('sec-12')"><span class="nav-dot"></span>Caching Strategy</a>
+    <a class="nav-link" onclick="switchTab('arch'); scrollTo('sec-13')"><span class="nav-dot"></span>Monitoring</a>
+    <a class="nav-link" onclick="switchTab('arch'); scrollTo('sec-14')"><span class="nav-dot"></span>CI/CD Pipeline</a>
+    <a class="nav-link" onclick="switchTab('arch'); scrollTo('sec-15')"><span class="nav-dot"></span>Migration Strategy</a>
+    <a class="nav-link" onclick="switchTab('arch'); scrollTo('sec-16')"><span class="nav-dot"></span>Folder Structures</a>
+    <a class="nav-link" onclick="switchTab('arch'); scrollTo('sec-17')"><span class="nav-dot"></span>API Standards</a>
+    <a class="nav-link" onclick="switchTab('arch'); scrollTo('sec-18')"><span class="nav-dot"></span>Architecture Decisions</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-label">Schema</div>
+    <a class="nav-link" onclick="switchTab('schema'); scrollTo('schema-top')"><span class="nav-dot"></span>PostgreSQL DDL</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-label">Diagrams</div>
+    <a class="nav-link" onclick="switchTab('diagrams'); scrollTo('diag-1')"><span class="nav-dot"></span>System Context (C4 L1)</a>
+    <a class="nav-link" onclick="switchTab('diagrams'); scrollTo('diag-2')"><span class="nav-dot"></span>Container Diagram (C4 L2)</a>
+    <a class="nav-link" onclick="switchTab('diagrams'); scrollTo('diag-3')"><span class="nav-dot"></span>Content State Machine</a>
+    <a class="nav-link" onclick="switchTab('diagrams'); scrollTo('diag-4')"><span class="nav-dot"></span>Content Data Flow</a>
+    <a class="nav-link" onclick="switchTab('diagrams'); scrollTo('diag-5')"><span class="nav-dot"></span>Workflow Sequence</a>
+    <a class="nav-link" onclick="switchTab('diagrams'); scrollTo('diag-6')"><span class="nav-dot"></span>Caching Architecture</a>
+    <a class="nav-link" onclick="switchTab('diagrams'); scrollTo('diag-7')"><span class="nav-dot"></span>ERD — Schema Relations</a>
+    <a class="nav-link" onclick="switchTab('diagrams'); scrollTo('diag-8')"><span class="nav-dot"></span>CI/CD Pipeline</a>
+    <a class="nav-link" onclick="switchTab('diagrams'); scrollTo('diag-9')"><span class="nav-dot"></span>Migration Timeline</a>
+    <a class="nav-link" onclick="switchTab('diagrams'); scrollTo('diag-10')"><span class="nav-dot"></span>Observability Stack</a>
+  </div>
+</nav>
+
+<!-- ── M-IN ── -->
+<main id="main">
+  <div class="topbar">
+    <div class="topbar-breadcrumb">cms-platform / <span>architecture-blueprint</span></div>
+    <div class="topbar-meta">
+      <span class="badge badge-blue">Java 21</span>
+      <span class="badge badge-green">Spring Boot 3</span>
+      <span class="badge badge-purple">Next.js 14</span>
+    </div>
+  </div>
+
+  <div id="content">
+
+    <!-- ── T-B B-R ── -->
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab('arch')">Architecture</button>
+      <button class="tab-btn" onclick="switchTab('schema')">PostgreSQL Schema</button>
+      <button class="tab-btn" onclick="switchTab('diagrams')">Mermaid Diagrams</button>
+    </div>
+
+    <!-- ════════════════════════════════════════
+         T-B: ARCHITECTURE
+    ════════════════════════════════════════ -->
+    <div id="tab-arch" class="tab-pane active">
+
+      <!-- HERO -->
+      <div class="hero" id="hero">
+        <div class="hero-eyebrow">Principal Architecture Review — Enterprise CMS Redesign</div>
+        <h1 class="hero-title">NextGen <span class="highlight">Enterprise CMS</span><br>Architecture Blueprint</h1>
+        <p class="hero-sub">- complete architectural redesign from 28 tightly-coupled modules to a cloud-native, event-driven, microservice platform — where new functionality is added through configuration, not code.</p>
+        <div class="hero-stats">
+          <div class="stat"><div class="stat-value">351</div><div class="stat-label">Java files analyzed</div></div>
+          <div class="stat"><div class="stat-value">28</div><div class="stat-label">Coupled modules found</div></div>
+          <div class="stat"><div class="stat-value">47</div><div class="stat-label">Enum/Convertor files to eliminate</div></div>
+          <div class="stat"><div class="stat-value">9</div><div class="stat-label">Target microservices</div></div>
+        </div>
+      </div>
+
+      <!-- SECTION 1: ROOT DISE-SE -->
+      <div class="section" id="sec-1">
+        <div class="section-header">
+          <span class="section-num">01</span>
+          <h2 class="section-title">The Root Disease</h2>
+        </div>
+        <div class="callout">
+          <div class="callout-title">Core Diagnosis</div>
+          <div class="callout-body">After analyzing 351 Java source files across 28 modules, the core problem is not "large controllers" or "enums in business logic." Those are symptoms.<br><br><strong>The root disease is: The system has no abstraction layer between "content concept" and "database table."</strong> Every content type is permanently encoded in Java classes, ENUMs, and DDL. Adding a category means a code deployment.<br><br>This is the <em>Single Responsibility Violation at the Architecture Level</em> — the architecture itself is responsible for what should be a runtime configuration concern.</div>
+        </div>
+      </div>
+
+      <!-- SECTION 2: ANTI-P-TTERNS -->
+      <div class="section" id="sec-2">
+        <div class="section-header">
+          <span class="section-num">02</span>
+          <h2 class="section-title">7 Structural Anti-Patterns Found</h2>
+        </div>
+        <div class="antipattern-grid">
+          <div class="antipattern-card">
+            <div class="antipattern-num">P-TTERN 01</div>
+            <div class="antipattern-name">ENUM-as-Category Anti-Pattern</div>
+            <div class="antipattern-desc">25 ENUM files + 22 Convertor files = 47 files that exist only because categories are not database-driven. Adding a category requires recompile → deploy → restart.</div>
+          </div>
+          <div class="antipattern-card">
+            <div class="antipattern-num">P-TTERN 02</div>
+            <div class="antipattern-name">Fat Controller Anti-Pattern</div>
+            <div class="antipattern-desc">Largest controller: 4,571 lines. Average: ~580 lines. Controllers do auth checks, business logic, file I/O, path construction, date parsing, enum conversion — all in one class.</div>
+          </div>
+          <div class="antipattern-card">
+            <div class="antipattern-num">P-TTERN 03</div>
+            <div class="antipattern-name">Repository-as-Service Anti-Pattern</div>
+            <div class="antipattern-desc">Controllers directly inject repositories, bypassing the service layer. 80+ character method names encode entire queries as Java identifiers. The query is invisible to non-Java tooling.</div>
+          </div>
+          <div class="antipattern-card">
+            <div class="antipattern-num">P-TTERN 04</div>
+            <div class="antipattern-name">Structural Duplication at Module Scale</div>
+            <div class="antipattern-desc">All 28 modules contain near-identical 7-file structures. This is not modularity — it is copy-paste architecture. Adding module 29 will look exactly like modules 1–28.</div>
+          </div>
+          <div class="antipattern-card">
+            <div class="antipattern-num">P-TTERN 05</div>
+            <div class="antipattern-name">Business Logic in the HTTP Layer</div>
+            <div class="antipattern-desc">The controller handles date parsing, file upload path construction, parent-child path inheritance, enum conversion, workflow triggers inside a single @PostMapping. No service method exists for "save a record."</div>
+          </div>
+          <div class="antipattern-card">
+            <div class="antipattern-num">P-TTERN 06</div>
+            <div class="antipattern-name">Workflow as a Bolted-On Afterthought</div>
+            <div class="antipattern-desc">27 out of 28 modules independently invoke WorkflowService. No unified audit trail. No single lifecycle owner. Workflow is not a first-class concept — it's an ad-hoc call inside each controller.</div>
+          </div>
+          <div class="antipattern-card">
+            <div class="antipattern-num">P-TTERN 07</div>
+            <div class="antipattern-name">Configuration Burned Into Binary</div>
+            <div class="antipattern-desc">Hardcoded org code "CG57006" in TenderNotice.java. File paths, category IDs, UI layout flags (isGrid, isCard, isNormal) stored as Java class fields. Every variant requires code change or restart.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTION 3: COST -->
+      <div class="section" id="sec-3">
+        <div class="section-header">
+          <span class="section-num">03</span>
+          <h2 class="section-title">The Real Cost of the Current Architecture</h2>
+        </div>
+        <table class="comparison-table">
+          <thead>
+            <tr>
+              <th>Action</th>
+              <th class="before">Current Cost</th>
+              <th class="after">Target Cost</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Add a new content category</td><td class="before">Code change + deploy + restart</td><td class="after">Admin UI click</td></tr>
+            <tr><td>Add a new field to a content type</td><td class="before">Code change + DB migration + deploy</td><td class="after">Admin UI form</td></tr>
+            <tr><td>Add a new workflow step</td><td class="before">Code change in N controllers</td><td class="after">Workflow designer config</td></tr>
+            <tr><td>Add a new content module</td><td class="before">Copy-paste 7 files + 2 ENUMs + DDL</td><td class="after">Content type configuration</td></tr>
+            <tr><td>Debug a publish failure</td><td class="before">Trace across controller → service → scheduler → 3 repos</td><td class="after">Single event stream lookup + trace ID</td></tr>
+            <tr><td>Onboard a new developer</td><td class="before">Read 28 modules × 7 files = 196 files</td><td class="after">Read one domain model + architecture doc</td></tr>
+            <tr><td>Write a unit test for save logic</td><td class="before">Mock HTTP request, session, 3 repos, 2 enums, file system</td><td class="after">Call a pure domain service</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- SECTION 4: TARGET ARCHITECTURE -->
+      <div class="section" id="sec-4">
+        <div class="section-header">
+          <span class="section-num">04</span>
+          <h2 class="section-title">Target Architecture — 3 Axioms</h2>
+        </div>
+        <div class="axiom-list">
+          <div class="axiom-card">
+            <div class="axiom-num">1</div>
+            <div class="axiom-body"><strong>Content is data, not code.</strong><p>- "Tender Notice" with fields -, B, C is not different in kind from a "Vacancy" with fields X, Y, Z. Both are instances of a content type. The content type schema is stored in the database and interpreted at runtime. No Java class exists per content type.</p></div>
+          </div>
+          <div class="axiom-card">
+            <div class="axiom-num">2</div>
+            <div class="axiom-body"><strong>Behaviour is pluggable, not hardcoded.</strong><p>When content transitions between states (draft → review → published), the transition rules, notification targets, and side effects are configured — not compiled. The workflow engine reads configuration; it does not contain content-type-specific if-else chains.</p></div>
+          </div>
+          <div class="axiom-card">
+            <div class="axiom-num">3</div>
+            <div class="axiom-body"><strong>Infrastructure is explicit, not implicit.</strong><p>Every cross-cutting concern (caching, audit, events, search indexing) is handled by an infrastructure layer that content services call through defined ports. There are no surprise side effects inside a save() method.</p></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTION 5: MICROSERVICES -->
+      <div class="section" id="sec-5">
+        <div class="section-header">
+          <span class="section-num">05</span>
+          <h2 class="section-title">Microservice Boundaries</h2>
+        </div>
+        <p style="color:var(--text-muted);margin-bottom:20px;">Each service boundary is defined by domain cohesion (what changes together) and team autonomy (who owns it), not by technical layer.</p>
+        <div class="service-grid">
+          <div class="service-card"><div class="service-port">:8081 — ContentDTO</div><div class="service-name">content-service</div><div class="service-owns">Universal content CRUD, lifecycle, versioning. Replaces all 28 module services with a single generic runtime driven by schema-service.</div></div>
+          <div class="service-card"><div class="service-port">:8086 — SchemaDefinitionDTO</div><div class="service-name">schema-service</div><div class="service-owns">Dynamic content type registry, field definitions, category management. Must be separate — other services depend on it as a shared registry.</div></div>
+          <div class="service-card"><div class="service-port">:8082 — WorkflowInstanceDTO</div><div class="service-name">workflow-service</div><div class="service-owns">Data-driven state machine engine. Governs content publish, vendor registration, and tender approval. Must be separate to serve all domains.</div></div>
+          <div class="service-card"><div class="service-port">:8083 — MediaAssetDTO</div><div class="service-name">media-service</div><div class="service-owns">File upload, storage backend abstraction (Local/S3/GCS/Azure), thumbnail generation, CDN integration, checksum deduplication.</div></div>
+          <div class="service-card"><div class="service-port">:8084 — PrincipalDTO</div><div class="service-name">iam-service</div><div class="service-owns">Users, roles, permissions, JWT issuance, RBAC enforcement. Resource-Action-Scope permission model enforced at API gateway and service layer.</div></div>
+          <div class="service-card"><div class="service-port">:8087 — FormDefinitionDTO</div><div class="service-name">form-service</div><div class="service-owns">Dynamic form schema management using JSON Schema + UI Schema. Submission handling and validation routing to configured action handlers.</div></div>
+          <div class="service-card"><div class="service-port">:8085 — SearchResultDTO</div><div class="service-name">search-service</div><div class="service-owns">Full-text search, faceted filtering, search index management. PostgreSQL tsvector baseline with OpenSearch for production-scale datasets.</div></div>
+          <div class="service-card"><div class="service-port">:8088 — NotificationDTO</div><div class="service-name">notification-service</div><div class="service-owns">Email, SMS, in-app notification dispatch. Template-driven. Consumes workflow and content events from Kafka asynchronously.</div></div>
+          <div class="service-card"><div class="service-port">:8089 — AuditEventDTO</div><div class="service-name">audit-service</div><div class="service-owns">Append-only immutable event log. Must be separate and write-only from other services to guarantee tamper-proof compliance records. Partitioned by month.</div></div>
+        </div>
+      </div>
+
+      <!-- SECTION 6: CONTENT ENGINE -->
+      <div class="section" id="sec-6">
+        <div class="section-header">
+          <span class="section-num">06</span>
+          <h2 class="section-title">Dynamic Content Engine</h2>
+        </div>
+        <table class="comparison-table">
+          <thead><tr><th>Step</th><th class="before">Old Way (28 Modules)</th><th class="after">New Way (Configuration)</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td class="before">Write CmsTenderNotice.java (model)</td><td class="after">Admin opens Content Types → New</td></tr>
+            <tr><td>2</td><td class="before">Write TenderNoticeCategoryEnum.java</td><td class="after">Adds fields: title, tender_value, bid_date...</td></tr>
+            <tr><td>3</td><td class="before">Write TenderNoticeController.java (600 LOC)</td><td class="after">Sets workflow: standard-publish-workflow</td></tr>
+            <tr><td>4</td><td class="before">Write TenderNoticeRepository.java</td><td class="after">Saves</td></tr>
+            <tr><td>5</td><td class="before">Write TenderNoticeServiceImpl.java</td><td class="after">Done — immediately available</td></tr>
+            <tr><td>6</td><td class="before">Write DB migration</td><td class="after">—</td></tr>
+            <tr><td>7</td><td class="before">Deploy</td><td class="after">—</td></tr>
+          </tbody>
+        </table>
+        <div class="callout">
+          <div class="callout-title">Key Insight</div>
+          <div class="callout-body">- <strong>tender_notice</strong> content type that today requires ~7 Java files and a DB migration becomes a single database record in <code>cms_content.content_types</code> with child rows in <code>field_definitions</code> and <code>categories</code>. The <code>DynamicForm.tsx</code> component on the frontend renders any schema — no new React component needed either.</div>
+        </div>
+      </div>
+
+      <!-- SECTION 7: WORKFLOW -->
+      <div class="section" id="sec-7">
+        <div class="section-header">
+          <span class="section-num">07</span>
+          <h2 class="section-title">Workflow Engine Design</h2>
+        </div>
+        <div class="md-body">
+          <p>The workflow engine is a <strong>data-driven state machine</strong> where states, transitions, guards, and actions are all defined in JSONB configuration stored in <code>cms_workflow.workflow_definitions</code>. No workflow logic exists in content controllers.</p>
+          <h3>Permission Model per Transition</h3>
+          <p>Each transition defines <strong>guards</strong> (must-pass checks) and <strong>actions</strong> (side effects after passing). Guards include role checks, field validation, and ownership verification. Actions include notifications, cache invalidation, search indexing, and Kafka event emission.</p>
+          <h3>Adding a New Workflow — Zero Code Change</h3>
+          <p>Need a "Tender-specific 3-level approval" workflow- Open Workflow Designer in CMS Admin → Define states and transitions via UI → Assign to <code>tender_notice</code> content type → Done. Existing content types are entirely unaffected.</p>
+          <h3>Outbox Pattern for Guaranteed Delivery</h3>
+          <p>Every workflow transition writes to an <code>outbox_events</code> table inside the same DB transaction. - Debezium CDC connector or scheduler reads from the outbox and publishes to Kafka. This guarantees exactly-once event delivery even if Kafka is temporarily unavailable.</p>
+        </div>
+      </div>
+
+      <!-- SECTION 8: FORM ENGINE -->
+      <div class="section" id="sec-8">
+        <div class="section-header">
+          <span class="section-num">08</span>
+          <h2 class="section-title">Dynamic Form Engine</h2>
+        </div>
+        <div class="md-body">
+          <p>Forms are rendered using <strong>JSON Schema + UI Schema</strong> on the frontend. The backend stores the schema, validates submissions, and routes them to configured action handlers — no per-form React components or Spring controllers needed.</p>
+          <h3>Form Lifecycle</h3>
+          <ol>
+            <li><strong>Design</strong> — Admin creates form schema in UI (WYSIWYG field builder)</li>
+            <li><strong>Render</strong> — Next.js fetches schema, <code>DynamicForm.tsx</code> renders it automatically</li>
+            <li><strong>Submit</strong> — Server validates against JSON Schema, saves to <code>form_submissions</code>, routes to action handler</li>
+          </ol>
+          <h3>Validation</h3>
+          <p>Validation rules live in the schema JSON: required fields, regex patterns (PAN: <code>^[--Z]{5}[0-9]{4}[--Z]$</code>, GST: full Indian format), min/max, format checks. Server-side validation is identical to client-side — single source of truth.</p>
+        </div>
+      </div>
+
+      <!-- SECTION 9: MEDIA -->
+      <div class="section" id="sec-9">
+        <div class="section-header">
+          <span class="section-num">09</span>
+          <h2 class="section-title">Media Management</h2>
+        </div>
+        <div class="md-body">
+          <p>The <code>StoragePort</code> interface abstracts all file backends. Switching from local filesystem to AWS S3 requires a configuration change, not a code change. This directly eliminates the hardcoded <code>environment.getProperty("file.repository.path")</code> pattern found across the current system.</p>
+          <h3>Upload Pipeline</h3>
+          <ol>
+            <li>Validate (type, size, virus scan)</li>
+            <li>Generate UUID filename (no original filename in path — prevents path traversal)</li>
+            <li>Check SHA-256 checksum for deduplication</li>
+            <li>Store to configured backend (Local / S3 / GCS / Azure Blob)</li>
+            <li>Generate thumbnail asynchronously via Kafka event</li>
+            <li>Write metadata to <code>cms_media.media_assets</code></li>
+            <li>Return <code>MediaAssetDTO</code> with CDN URL</li>
+          </ol>
+        </div>
+      </div>
+
+      <!-- SECTION 10: RBAC -->
+      <div class="section" id="sec-10">
+        <div class="section-header">
+          <span class="section-num">10</span>
+          <h2 class="section-title">RBAC & Authorization</h2>
+        </div>
+        <div class="md-body">
+          <p>The current system uses session-based role checks scattered across 28 controllers. The new system centralises authorization using a <strong>Resource-Action-Scope</strong> model enforced at the API gateway and service layer, with PostgreSQL Row-Level Security as a final backstop.</p>
+          <h3>Permission Format</h3>
+          <pre><code class="language-bash">content:CREATE:OWN        → Can create content (for themselves)
+content:READ:ALL          → Can read all content
+content:PUBLISH:DEPT      → Can publish content in own department
+tender:APPROVE:ALL        → Can approve any tender
+workflow:MANAGE:ALL       → Can configure workflows
+media:DELETE:OWN          → Can delete own media</code></pre>
+          <h3>Enforcement Points</h3>
+          <p>HTTP Request → API Gateway (JWT validation) → Service Layer <code>@PreAuthorize</code> → Domain Service (predicate) → Repository (tenant isolation, soft-delete filter)</p>
+          <h3>PostgreSQL Row-Level Security</h3>
+          <p>RLS policies enforce tenant isolation at the database level, making cross-tenant data leaks impossible regardless of application-layer bugs.</p>
+        </div>
+      </div>
+
+      <!-- SECTION 11: EVENTS -->
+      <div class="section" id="sec-11">
+        <div class="section-header">
+          <span class="section-num">11</span>
+          <h2 class="section-title">Event-Driven Communication</h2>
+        </div>
+        <div class="md-body">
+          <h3>Kafka Topic Registry</h3>
+          <pre><code class="language-bash">cms.content.created       → search-service indexes, audit-service logs
+cms.content.updated       → search-service re-indexes, cache invalidation
+cms.content.published     → notification-service notifies, CDN purge
+cms.content.archived      → search-service removes, analytics event
+cms.workflow.transitioned → notification-service, audit-service
+cms.media.uploaded        → thumbnail generation, virus scan
+cms.user.login            → audit-service, anomaly detection
+cms.user.role.changed     → audit-service, cache invalidation
+cms.schema.changed        → all services refresh schema cache</code></pre>
+          <h3>Event Schema (CloudEvents 1.0 Standard)</h3>
+          <p>All events follow the CloudEvents specification with a standard envelope: <code>specversion</code>, <code>type</code>, <code>source</code>, <code>id</code>, <code>time</code>, <code>tenantid</code>, <code>correlationid</code>, and typed <code>data</code> payload. This enables replay, dead-letter queuing, and cross-system correlation via trace ID.</p>
+        </div>
+      </div>
+
+      <!-- SECTION 12: CACHING -->
+      <div class="section" id="sec-12">
+        <div class="section-header">
+          <span class="section-num">12</span>
+          <h2 class="section-title">Caching Strategy</h2>
+        </div>
+        <div class="md-body">
+          <h3>Cache Regions (Redis)</h3>
+          <pre><code class="language-bash">content:{id}                           TTL: 10 min → individual items
+content:list:{typeCode}:{location}     TTL:  5 min → listing pages
+schema:{typeCode}                      TTL: 60 min → schema definitions
+menu:{location}                        TTL: 15 min → navigation menus
+user:{id}:permissions                  TTL:  5 min → permission bitset
+workflow:{code}:def                    TTL: 30 min → workflow definitions
+search:facets:{type}                   TTL: 10 min → aggregation results</code></pre>
+          <h3>Event-Driven Cache Invalidation</h3>
+          <p>When <code>cms.content.published</code> fires, the cache invalidator evicts exactly the affected content item and its listing page entries. This replaces the ad-hoc <code>@Scheduled</code> cache refresh found in the current system with targeted, event-driven invalidation — no more stale data from missed scheduler runs.</p>
+        </div>
+      </div>
+
+      <!-- SECTION 13: MONITORING -->
+      <div class="section" id="sec-13">
+        <div class="section-header">
+          <span class="section-num">13</span>
+          <h2 class="section-title">Monitoring & Observability</h2>
+        </div>
+        <div class="md-body">
+          <h3>Three Pillars</h3>
+          <p><strong>Metrics</strong> — Micrometer → Prometheus → Grafana. Custom metrics: <code>cms_content_create_total</code>, <code>cms_workflow_transition_total</code>, <code>cms_cache_hit_ratio</code>, <code>cms_kafka_consumer_lag</code>.</p>
+          <p><strong>Traces</strong> — OpenTelemetry auto-instrumentation → Jaeger / Tempo. Every HTTP request carries a trace ID across all service calls. "Why did this tender publish fail-" → single trace shows the complete call graph.</p>
+          <p><strong>Logs</strong> — Structured JSON via Logback → Fluentd → Elasticsearch → Kibana. Every log line includes <code>traceId</code>, <code>tenantId</code>, <code>userId</code>, <code>contentId</code>. Never raw string concatenation.</p>
+          <h3>Health Check Endpoints (Spring Actuator)</h3>
+          <pre><code class="language-bash">GET /actuator/health           → liveness probe
+GET /actuator/health/readiness → readiness probe
+GET /actuator/metrics          → Prometheus scrape
+GET /actuator/info             → build metadata</code></pre>
+        </div>
+      </div>
+
+      <!-- SECTION 14: CICD -->
+      <div class="section" id="sec-14">
+        <div class="section-header">
+          <span class="section-num">14</span>
+          <h2 class="section-title">CI/CD Strategy</h2>
+        </div>
+        <div class="md-body">
+          <p>Zero-downtime deployments are possible because DB migrations run via Flyway before deploy, services are stateless (session in Redis), and Kubernetes rolling updates use health check gates. All migrations must be backward-compatible with the previous service version.</p>
+          <p><strong>Pipeline stages:</strong> Validate (2 min) → Test parallel (10 min) → Docker build (5 min) → Auto-deploy to Dev → Manual promote to Staging → Manual approval gate → Blue/Green to Production → 15-minute observation window with auto-rollback.</p>
+        </div>
+      </div>
+
+      <!-- SECTION 15: MIGRATION -->
+      <div class="section" id="sec-15">
+        <div class="section-header">
+          <span class="section-num">15</span>
+          <h2 class="section-title">Migration Strategy (Strangler Fig)</h2>
+        </div>
+        <div class="md-body">
+          <p>The migration uses the <strong>Strangler Fig pattern</strong> — the new system grows around the old one, gradually taking over traffic until the old system can be safely decommissioned. No big-bang rewrite.</p>
+          <h3>4 Phases (12–16 weeks)</h3>
+          <p><strong>Phase 1 (Weeks 1–4) — Foundation:</strong> Deploy K8s cluster, Kafka, Redis. Deploy IAM, Schema, Audit services. Migrate users and roles. Run both systems in parallel.</p>
+          <p><strong>Phase 2 (Weeks 5–8) — Content Engine:</strong> Map all 25 ENUMs to database category rows. Deploy Content Service with dual-write. Run migration SQL for all 28 module tables into <code>content_items</code>. Verify data parity.</p>
+          <p><strong>Phase 3 (Weeks 9–12) — Traffic Cutover:</strong> Route 10% → 25% → 50% → 100% read traffic to new stack using feature flags. Remove old module controllers one by one.</p>
+          <p><strong>Phase 4 (Weeks 13–16) — Decommission:</strong> Remove all 47 ENUM/Convertor files. Archive old tables. Decommission old application servers. Capture performance baseline.</p>
+        </div>
+      </div>
+
+      <!-- SECTION 16: FOLDER STRUCTURES -->
+      <div class="section" id="sec-16">
+        <div class="section-header">
+          <span class="section-num">16</span>
+          <h2 class="section-title">Folder Structures</h2>
+        </div>
+        <div class="md-body">
+          <h3>Backend — Hexagonal Architecture</h3>
+          <pre><code class="language-bash">cms-platform/
+├── services/
+│   ├── content-service/
+│   │   └── src/main/java/com/cms/content/
+│   │       ├── domain/
+│   │       │   ├── model/          ← ContentItem, ContentVersion, ContentStatus
+│   │       │   ├── ports/
+│   │       │   │   ├── in/         ← Use case interfaces (CreateContentUseCase...)
+│   │       │   │   └── out/        ← Port interfaces (ContentRepository, WorkflowPort...)
+│   │       │   └── service/        ← ContentDomainService (no framework imports)
+│   │       ├── application/        ← ContentApplicationService, DTOs, Commands
+│   │       ├── infrastructure/     ← JPA entities, Kafka, Redis, HTTP clients
+│   │       └── api/                ← ONE ContentRestController for all types
+│   ├── workflow-service/           ← same hexagonal structure
+│   ├── schema-service/             ← same hexagonal structure
+│   ├── media-service/              ← same hexagonal structure
+│   ├── iam-service/                ← same hexagonal structure
+│   ├── search-service/             ← same hexagonal structure
+│   ├── notification-service/       ← same hexagonal structure
+│   └── audit-service/              ← same hexagonal structure
+├── libs/
+│   ├── cms-common/                 ← Shared DTOs, events, exceptions
+│   ├── cms-security/               ← JWT, permission annotations
+│   └── cms-testing/                ← Test utilities, fixtures
+├── infrastructure/
+│   ├── kubernetes/base/            ← Deployment, Service, HP- per microservice
+│   ├── kubernetes/overlays/        ← dev, staging, production Kustomize overlays
+│   ├── helm/cms-platform/          ← Helm chart for the full platform
+│   └── terraform/                  ← RDS, EKS, MSK (Kafka), ElastiCache
+└── db/
+    ├── migrations/                 ← Flyway: V1__core_schemas.sql ...
+    └── seeds/                      ← default_roles.sql, default_content_types.sql</code></pre>
+          <h3>Frontend — Next.js 14 Monorepo</h3>
+          <pre><code class="language-bash">cms-frontend/
+├── apps/
+│   ├── admin/src/
+│   │   ├── app/(dashboard)/content/[type]/page.tsx   ← Dynamic list (any content type)
+│   │   ├── app/(dashboard)/content/[type]/[id]/      ← Dynamic edit (any content type)
+│   │   ├── components/form-engine/
+│   │   │   ├── DynamicForm.tsx       ← Renders any field_definitions JSON schema
+│   │   │   ├── fields/               ← TextField, FileUploadField, RichTextField...
+│   │   │   └── FieldRegistry.ts      ← Maps field_type → React component
+│   │   └── components/workflow/
+│   │       ├── WorkflowStatus.tsx
+│   │       ├── WorkflowActions.tsx
+│   │       └── WorkflowHistory.tsx
+│   └── public/                       ← Public-facing SSR/ISR site
+└── packages/
+    ├── ui/                           ← Shared design system
+    ├── api-client/                   ← Generated from OpenAPI spec
+    └── types/                        ← Shared TypeScript interfaces</code></pre>
+        </div>
+      </div>
+
+      <!-- SECTION 17: API -->
+      <div class="section" id="sec-17">
+        <div class="section-header">
+          <span class="section-num">17</span>
+          <h2 class="section-title">API Standards & Conventions</h2>
+        </div>
+        <div class="md-body">
+          <h3>REST API — Generic Content Endpoints</h3>
+          <pre><code class="language-bash">Base: /api/v1
+
+# Content (one set of endpoints for ALL content types)
+GET    /api/v1/content/{type}                  → List with pagination & filters
+POST   /api/v1/content/{type}                  → Create
+GET    /api/v1/content/{type}/{id}             → Get by ID
+PUT    /api/v1/content/{type}/{id}             → Update
+DELETE /api/v1/content/{type}/{id}             → Soft delete
+POST   /api/v1/content/{type}/{id}/workflow    → Trigger workflow action
+GET    /api/v1/content/{type}/{id}/versions    → Version history
+
+# Schema
+GET    /api/v1/schema/types                    → List content types
+POST   /api/v1/schema/types                    → Create content type (admin)
+GET    /api/v1/schema/types/{code}             → Get type + field definitions
+GET    /api/v1/schema/types/{code}/categories  → Get category tree
+
+# Workflow
+GET    /api/v1/workflows                       → List workflow definitions
+POST   /api/v1/workflows                       → Create workflow definition
+PUT    /api/v1/workflows/{code}                → Update workflow definition
+
+# Media
+POST   /api/v1/media/upload                    → Upload file (multipart)
+GET    /api/v1/media/{id}                      → Get asset metadata
+GET    /api/v1/media-folder=/path&type=image   → Browse media library</code></pre>
+          <h3>Response Envelope</h3>
+          <pre><code class="language-json">{
+  "success": true,
+  "data": { "...": "..." },
+  "meta": { "page": 0, "size": 20, "totalElements": 142, "totalPages": 8 },
+  "timestamp": "2025-01-01T00:00:00Z",
+  "traceId": "abc-123-def-456"
+}
+
+// Error:
+{
+  "success": false,
+  "error": {
+    "code": "CONTENT_NOT_FOUND",
+    "message": "Content item with ID 'xyz' not found",
+    "traceId": "abc-123-def-456"
+  }
+}</code></pre>
+        </div>
+      </div>
+
+      <!-- SECTION 18: DECISIONS -->
+      <div class="section" id="sec-18">
+        <div class="section-header">
+          <span class="section-num">18</span>
+          <h2 class="section-title">Architecture Decisions & Rationale</h2>
+        </div>
+        <div class="decision-grid">
+          <div class="decision-card">
+            <div class="decision-name">JSONB body for content</div>
+            <div class="decision-rationale">Eliminates per-content-type tables. Schema flexibility without EAV performance penalty. PostgreSQL GIN index enables fast queries on any field.</div>
+            <div class="decision-tradeoff">⚠ Harder to write raw SQL. Mitigated by search service and typed query builders.</div>
+          </div>
+          <div class="decision-card">
+            <div class="decision-name">Hexagonal Architecture</div>
+            <div class="decision-rationale">Domain logic has zero framework dependencies. Business rules are testable without Spring, JPA, or HTTP mocking. Domain model is the stable core.</div>
+            <div class="decision-tradeoff">⚠ More boilerplate than traditional layered arch. Justified by testability gains.</div>
+          </div>
+          <div class="decision-card">
+            <div class="decision-name">Outbox Pattern</div>
+            <div class="decision-rationale">Guarantees event delivery even when Kafka is down. Eliminates dual-write consistency bugs. Enables event replay for new consumers.</div>
+            <div class="decision-tradeoff">⚠ Requires a CDC connector or scheduler. Small operational overhead.</div>
+          </div>
+          <div class="decision-card">
+            <div class="decision-name">Workflow as JSONB config</div>
+            <div class="decision-rationale">New approval processes require zero code. Configurable from admin UI. Eliminates repeated workflow code across 27 controllers.</div>
+            <div class="decision-tradeoff">⚠ More complex execution engine. Well-justified by eliminating 27 independent workflow call sites.</div>
+          </div>
+          <div class="decision-card">
+            <div class="decision-name">PostgreSQL RLS</div>
+            <div class="decision-rationale">Tenant data isolation enforced at DB level. Impossible to accidentally leak across tenants regardless of application bugs.</div>
+            <div class="decision-tradeoff">⚠ Requires setting session variables before every query. Handled transparently in the repository layer.</div>
+          </div>
+          <div class="decision-card">
+            <div class="decision-name">UUID Primary Keys</div>
+            <div class="decision-rationale">Safe for distributed generation across services. Opaque to clients (no enumeration attacks). No sequence coordination needed.</div>
+            <div class="decision-tradeoff">⚠ Slightly larger than BIGINT. UUIDv7 (time-ordered) mitigates index fragmentation.</div>
+          </div>
+          <div class="decision-card">
+            <div class="decision-name">Soft Deletes via deleted_at</div>
+            <div class="decision-rationale">Audit trail preservation. Recoverable from accidental deletes. Enables "trash" UX pattern.</div>
+            <div class="decision-tradeoff">⚠ More complex queries (always filter deleted_at IS NULL). Mitigated by PostgreSQL views and RLS policies.</div>
+          </div>
+          <div class="decision-card">
+            <div class="decision-name">Kafka Async Communication</div>
+            <div class="decision-rationale">Services are decoupled. search-service can fail without blocking content-service. Supports event replay and new consumer addition without producer changes.</div>
+            <div class="decision-tradeoff">⚠ Operational complexity. Mitigated by managed MSK or Confluent Cloud.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FIN-L C-LLOUT -->
+      <div class="callout">
+        <div class="callout-title">Summary: The Open/Closed Principle at Architecture Scale</div>
+        <div class="callout-body">
+          <strong>Before:</strong> Adding "Grievance Portal" required copying 7 Java files, writing 2 ENUMs + 2 Convertors, a DB migration, if-else additions in 27 workflow controllers, and a deployment with downtime risk.<br><br>
+          <strong>After:</strong> Admin → Content Types → Create New → Add fields → Select workflow → Save → Available immediately. No code. No deployment. No downtime.<br><br>
+          <strong>The system is open for extension through configuration, closed for modification through code.</strong>
+        </div>
+      </div>
+
+    </div><!-- /tab-arch -->
+
+
+    <!-- ════════════════════════════════════════
+         T-B: SCHEMA
+    ════════════════════════════════════════ -->
+    <div id="tab-schema" class="tab-pane">
+      <div class="section" id="schema-top">
+        <div class="section-header">
+          <span class="section-num">SQL</span>
+          <h2 class="section-title">PostgreSQL Schema — Full DDL</h2>
+        </div>
+        <p style="color:var(--text-muted);margin-bottom:24px;">Database-per-service topology (9 separate databases) with Row-Level Security with Row-Level Security, JSONB content bodies, partitioned audit tables, and GIN indexes for full-text search. Replaces all 28 per-module tables with a single universal <code>content_items</code> table driven by <code>content_types</code> + <code>field_definitions</code> configuration.</p>
+        <div class="md-body" id="schema-rendered"></div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════════
+         T-B: DI-GR-MS
+    ════════════════════════════════════════ -->
+    <div id="tab-diagrams" class="tab-pane">
+
+      <div class="section" id="diag-1">
+        <div class="section-header"><span class="section-num">D1</span><h2 class="section-title">System Context (C4 Level 1)</h2></div>
+        <div class="diagram-card"><div class="diagram-header"><span class="diagram-title">System Context Diagram</span><span class="diagram-tag">C4 Model · Level 1</span></div><div class="diagram-body"><div class="mermaid">C4Context
+    title NextGen CMS — System Context
+    Person(author, "Content Author", "Creates and manages CMS content")
+    Person(reviewer, "Reviewer / Approver", "Reviews and approves content")
+    Person(admin, "CMS Administrator", "Manages content types, workflows, users")
+    Person(visitor, "Public Visitor", "Reads published content")
+    Person(vendor, "Vendor / API Consumer", "Submits tenders, accesses public API")
+    System(cms, "NextGen CMS Platform", "Enterprise CMS with dynamic content types, workflow engine, and multi-site delivery")
+    System_Ext(email, "Email Service", "SMTP / SendGrid")
+    System_Ext(cdn, "CDN", "CloudFront / Nginx for static assets")
+    System_Ext(s3, "Object Storage", "S3 / GCS for media files")
+    System_Ext(idp, "Identity Provider", "OAuth2 / LDAP / SAML")
+    Rel(author, cms, "Creates, edits content", "HTTPS")
+    Rel(reviewer, cms, "Reviews, approves content", "HTTPS")
+    Rel(admin, cms, "Configures types, workflows", "HTTPS")
+    Rel(visitor, cms, "Views published pages", "HTTPS")
+    Rel(vendor, cms, "Registers, submits tenders", "REST API")
+    Rel(cms, email, "Sends notifications")
+    Rel(cms, cdn, "Serves static assets via")
+    Rel(cms, s3, "Stores media in")
+    Rel(cms, idp, "Authenticates via")</div></div></div>
+      </div>
+
+      <div class="section" id="diag-2">
+        <div class="section-header"><span class="section-num">D2</span><h2 class="section-title">Container Diagram (C4 Level 2)</h2></div>
+        <div class="diagram-card"><div class="diagram-header"><span class="diagram-title">Microservices Architecture</span><span class="diagram-tag">C4 Model · Level 2</span></div><div class="diagram-body"><div class="mermaid">C4Container
+    title NextGen CMS - Container Diagram (Database-per-Service)
+
+    Person(user, "CMS User", "Author, Reviewer, Admin")
+    Person(visitor, "Public Visitor")
+
+    Container_Boundary(frontend, "Frontend") {
+        Container(admin_app, "Admin Next.js App", "Next.js 14 + TypeScript", "CMS admin interface - dynamic forms, workflow UI, schema designer")
+        Container(public_app, "Public Next.js App", "Next.js 14 + TypeScript", "Public-facing website with SSR/ISR content delivery")
+    }
+
+    Container_Boundary(gateway, "API Gateway") {
+        Container(apigw, "API Gateway", "Kong / Nginx", "JWT validation, rate limiting, routing, SSL termination")
+    }
+
+    Container_Boundary(services, "Microservices") {
+        Container(content_svc, "Content Service", "Spring Boot 3 / Java 21", "Universal content CRUD, lifecycle, versioning. Replaces all 28 module services.")
+        Container(schema_svc, "Schema Service", "Spring Boot 3 / Java 21", "Dynamic content type registry, field definitions, categories, sites, menus")
+        Container(workflow_svc, "Workflow Service", "Spring Boot 3 / Java 21", "Data-driven state machine engine for content approval workflows")
+        Container(media_svc, "Media Service", "Spring Boot 3 / Java 21", "File upload, storage backend abstraction, thumbnail generation")
+        Container(iam_svc, "IAM Service", "Spring Boot 3 / Java 21", "Tenants, users, roles, permissions, JWT issuance, RBAC enforcement")
+        Container(form_svc, "Form Service", "Spring Boot 3 / Java 21", "Dynamic form schema management and submission handling")
+        Container(search_svc, "Search Service", "Spring Boot 3 / Java 21", "Full-text search, faceted filtering, OpenSearch index management")
+        Container(notif_svc, "Notification Service", "Spring Boot 3 / Java 21", "Email, SMS, in-app notification dispatch via templates")
+        Container(audit_svc, "Audit Service", "Spring Boot 3 / Java 21", "Append-only immutable event log - pure Kafka consumer")
+    }
+
+    Container_Boundary(infra, "Infrastructure (Shared)") {
+        Container(kafka, "Apache Kafka", "Message Broker", "Event streaming: content lifecycle, workflow transitions, media events")
+        Container(redis, "Redis Cluster", "Cache", "Content cache, session store, schema cache, permission cache, menu cache")
+    }
+
+    Container_Boundary(dbs, "Databases (9 Separate Instances)") {
+        ContainerDb(iamdb, "iamdb", "PostgreSQL 16", "tenants, users, roles, permissions, api_keys, refresh_tokens, outbox_events")
+        ContainerDb(schemadb, "schemadb", "PostgreSQL 16", "content_types, field_definitions, categories, sites, menus, menu_items, outbox_events")
+        ContainerDb(contentdb, "contentdb", "PostgreSQL 16", "content_items (JSONB body), content_versions, outbox_events")
+        ContainerDb(workflowdb, "workflowdb", "PostgreSQL 16", "workflow_definitions, workflow_instances, workflow_history, outbox_events")
+        ContainerDb(mediadb, "mediadb", "PostgreSQL 16", "media_assets, outbox_events")
+        ContainerDb(formdb, "formdb", "PostgreSQL 16", "form_definitions, form_submissions, outbox_events")
+        ContainerDb(opensearch, "searchstore", "OpenSearch 2.x", "Denormalized search documents - one index per tenant")
+        ContainerDb(notifdb, "notificationdb", "PostgreSQL 16", "notification_templates, notification_log, outbox_events")
+        ContainerDb(auditdb, "auditdb", "PostgreSQL 16 (partitioned)", "audit_events partitioned by month - append-only, no outbox")
+    }
+
+    Rel(user, admin_app, "Uses", "HTTPS")
+    Rel(visitor, public_app, "Views", "HTTPS")
+    Rel(admin_app, apigw, "API calls", "REST/HTTPS")
+    Rel(public_app, apigw, "API calls", "REST/HTTPS")
+
+    Rel(apigw, content_svc, "Routes to", "HTTP")
+    Rel(apigw, schema_svc, "Routes to", "HTTP")
+    Rel(apigw, workflow_svc, "Routes to", "HTTP")
+    Rel(apigw, media_svc, "Routes to", "HTTP")
+    Rel(apigw, iam_svc, "Routes to", "HTTP")
+    Rel(apigw, search_svc, "Routes to", "HTTP")
+
+    Rel(content_svc, contentdb, "Reads/Writes", "JDBC")
+    Rel(schema_svc, schemadb, "Reads/Writes", "JDBC")
+    Rel(workflow_svc, workflowdb, "Reads/Writes", "JDBC")
+    Rel(media_svc, mediadb, "Reads/Writes", "JDBC")
+    Rel(iam_svc, iamdb, "Reads/Writes", "JDBC")
+    Rel(form_svc, formdb, "Reads/Writes", "JDBC")
+    Rel(notif_svc, notifdb, "Reads/Writes", "JDBC")
+    Rel(audit_svc, auditdb, "Writes", "JDBC")
+    Rel(search_svc, opensearch, "Reads/Writes", "REST")
+
+    Rel(content_svc, kafka, "Publishes", "Debezium CDC")
+    Rel(schema_svc, kafka, "Publishes", "Debezium CDC")
+    Rel(workflow_svc, kafka, "Publishes", "Debezium CDC")
+    Rel(media_svc, kafka, "Publishes", "Debezium CDC")
+    Rel(iam_svc, kafka, "Publishes", "Debezium CDC")
+    Rel(form_svc, kafka, "Publishes", "Debezium CDC")
+
+    Rel(search_svc, kafka, "Consumes", "Kafka Client")
+    Rel(audit_svc, kafka, "Consumes", "Kafka Client")
+    Rel(notif_svc, kafka, "Consumes", "Kafka Client")</div></div></div>
+      </div>
+
+      <div class="section" id="diag-3">
+        <div class="section-header"><span class="section-num">D3</span><h2 class="section-title">Content Lifecycle State Machine</h2></div>
+        <div class="diagram-card"><div class="diagram-header"><span class="diagram-title">Content Status Transitions</span><span class="diagram-tag">Configurable per Content Type</span></div><div class="diagram-body"><div class="mermaid">stateDiagram-v2
+    direction LR
+    [*] --> DRAFT : Content Created
+    DRAFT --> IN_REVIEW : Submit for Review\n[Author role]\n[Required fields filled]
+    DRAFT --> DRAFT : Save as Draft
+    IN_REVIEW --> APPROVED : Approve\n[Reviewer role]\n[Not own content]
+    IN_REVIEW --> REJECTED : Reject\n[Reviewer role]\n[Comment required]
+    IN_REVIEW --> DRAFT : Request Changes
+    REJECTED --> DRAFT : Revise\n[Author role]
+    APPROVED --> PUBLISHED : Publish\n[Admin/Publisher role]
+    APPROVED --> SCHEDULED : Schedule Publish\n[Set publish_at date]
+    APPROVED --> DRAFT : Revoke Approval
+    SCHEDULED --> PUBLISHED : Auto-publish at scheduled time
+    SCHEDULED --> DRAFT : Cancel Schedule
+    PUBLISHED --> ARCHIVED : Archive\n[Admin role]
+    PUBLISHED --> PUBLISHED : Update (new version)
+    ARCHIVED --> PUBLISHED : Restore\n[Admin role]
+    ARCHIVED --> [*] : Hard Delete\n[Super Admin only]</div></div></div>
+      </div>
+
+      <div class="section" id="diag-4">
+        <div class="section-header"><span class="section-num">D4</span><h2 class="section-title">Dynamic Content Type — Data Flow</h2></div>
+        <div class="diagram-card"><div class="diagram-header"><span class="diagram-title">Create Type → Render Form → Submit Content</span><span class="diagram-tag">Zero Code Required</span></div><div class="diagram-body"><div class="mermaid">flowchart TD
+    -["Admin: Create Content Type\n'tender_notice'"] --> B["schema-service\nPOST /api/v1/schema/types"]
+    B --> C[("cms_content.content_types\n+ field_definitions\n+ categories")]
+    C --> D["Schema cache\ninvalidated in Redis"]
+    D --> E["Services notified\nvia Kafka: cms.schema.changed"]
+    F["Author: Open Admin UI\nContent → Tender Notice → New"] --> G["Fetch schema\nGET /api/v1/schema/types/tender_notice"]
+    G --> H{"Schema in\nRedis cache-"}
+    H -- Yes --> I["Return cached schema"]
+    H -- No --> J["Query schema-service"]
+    J --> I
+    I --> K["DynamicForm.tsx\nrenders form from\nfield_definitions JSON"]
+    K --> L["Author fills in details\nand submits"]
+    L --> M["POST /api/v1/content/tender_notice"]
+    M --> N["content-service\nvalidates body\nagainst field_definitions"]
+    N --> O{"Valid-"}
+    O -- No --> P["Return 400\nvalidation errors"]
+    O -- Yes --> Q[("Save to content_items\nbody JSONB column")]
+    Q --> R["Write to outbox_events"]
+    R --> S["Return 201 Created"]
+    T["Outbox Processor\nDebezium CDC"] --> U["cms.content.created\nKafka event"]
+    U --> V["audit-service logs"]
+    U --> W["search-service indexes"]</div></div></div>
+      </div>
+
+      <div class="section" id="diag-5">
+        <div class="section-header"><span class="section-num">D5</span><h2 class="section-title">Workflow Engine — Request Sequence</h2></div>
+        <div class="diagram-card"><div class="diagram-header"><span class="diagram-title">Submit for Review Flow</span><span class="diagram-tag">Guards → Actions → Events</span></div><div class="diagram-body"><div class="mermaid">sequenceDiagram
+    autonumber
+    actor Author
+    participant AdminUI as Admin Next.js
+    participant ContentSvc as Content Service
+    participant WorkflowSvc as Workflow Service
+    participant DB as PostgreSQL
+    participant Kafka as Apache Kafka
+    participant NotifSvc as Notification Service
+    Author->>AdminUI: Click "Submit for Review"
+    AdminUI->>ContentSvc: POST /workflow {"action":"SUBMIT_FOR_REVIEW"}
+    ContentSvc->>WorkflowSvc: triggerTransition(instanceId, "SUBMIT_FOR_REVIEW")
+    WorkflowSvc->>DB: Load workflow_definition (cached in Redis)
+    WorkflowSvc->>WorkflowSvc: Find transition: DRAFT → IN_REVIEW
+    WorkflowSvc->>WorkflowSvc: Guards: RoleCheck ✓ FieldNotEmpty ✓
+    WorkflowSvc->>DB: UPDATE workflow_instances SET current_state='IN_REVIEW'
+    WorkflowSvc->>DB: INSERT workflow_history (from=DRAFT, to=IN_REVIEW)
+    WorkflowSvc->>DB: INSERT outbox_events (EMIT_EVENT, AUDIT_LOG)
+    ContentSvc->>DB: UPDATE content_items SET status='IN_REVIEW'
+    ContentSvc-->>AdminUI: 200 OK {"newState":"IN_REVIEW"}
+    AdminUI-->>Author: Show "Submitted for Review" toast
+    Note over DB,Kafka: Outbox Processor (async, Debezium CDC)
+    DB->>Kafka: cms.workflow.transitioned event
+    Kafka->>NotifSvc: Consume event
+    NotifSvc->>NotifSvc: Load "review_requested" template
+    NotifSvc->>NotifSvc: Send email to REVIEWER role users</div></div></div>
+      </div>
+
+      <div class="section" id="diag-6">
+        <div class="section-header"><span class="section-num">D6</span><h2 class="section-title">Caching Architecture</h2></div>
+        <div class="diagram-card"><div class="diagram-header"><span class="diagram-title">Browser → CDN → Redis → PostgreSQL</span><span class="diagram-tag">Event-Driven Invalidation</span></div><div class="diagram-body"><div class="mermaid">flowchart LR
+    Client["Next.js Public App\nSSR Request"] --> CDN["CDN\nNginx / CloudFront"]
+    CDN --> |Cache Miss| AGW["API Gateway"]
+    CDN --> |Cache Hit ✓| Client
+    AGW --> CS["Content Service"]
+    CS --> RC{"Redis\nCache-"}
+    RC --> |Hit ✓| CS
+    RC --> |Miss| DB[("PostgreSQL")]
+    DB --> CS
+    CS --> |Write-through| RC
+    subgraph RedisKeys["Redis Cache Regions"]
+      K1["content:{id} · 10 min"]
+      K2["content:list:{type} · 5 min"]
+      K3["schema:{typeCode} · 60 min"]
+      K4["menu:{location} · 15 min"]
+      K5["user:{id}:perms · 5 min"]
+    end
+    subgraph Inv["Event-Driven Invalidation"]
+      EV["cms.content.published"] --> CI["Cache Invalidator"]
+      CI --> K1 & K2
+    end
+    RedisKeys --> RC</div></div></div>
+      </div>
+
+      <div class="section" id="diag-7">
+        <div class="section-header"><span class="section-num">D7</span><h2 class="section-title">PostgreSQL Schema — Entity Relationships</h2></div>
+        <div class="diagram-card"><div class="diagram-header"><span class="diagram-title">ERD — Core Tables</span><span class="diagram-tag">8 Schemas · JSONB · RLS</span></div><div class="diagram-body"><div class="mermaid">erDiagram
+    CONTENT_TYPES { uuid id PK; varchar code UK; boolean has_workflow; uuid workflow_id FK; jsonb metadata }
+    FIELD_DEFINITIONS { uuid id PK; uuid content_type_id FK; varchar field_key; varchar field_type; boolean is_required; jsonb validation_rules }
+    CATEGORIES { uuid id PK; uuid content_type_id FK; varchar code; uuid parent_id FK }
+    SITES { uuid id PK; uuid tenant_id; varchar code UK; varchar domain }
+    MENUS { uuid id PK; uuid site_id FK; varchar location }
+    MENU_ITEMS { uuid id PK; uuid menu_id FK; uuid content_item_id; varchar label }
+    CONTENT_ITEMS { uuid id PK; uuid tenant_id; uuid content_type_id FK; varchar title; jsonb body; varchar status; uuid category_id FK; uuid site_id FK; uuid workflow_instance_id FK; bigint version }
+    CONTENT_VERSIONS { uuid id PK; uuid content_item_id FK; int version_number; jsonb body }
+    WORKFLOW_DEFINITIONS { uuid id PK; varchar code; jsonb definition; boolean is_active }
+    WORKFLOW_INSTANCES { uuid id PK; uuid workflow_def_id FK; varchar entity_type; varchar current_state }
+    WORKFLOW_HISTORY { uuid id PK; uuid instance_id FK; varchar from_state; varchar to_state; uuid actor_id FK }
+    TENANTS { uuid id PK; varchar code UK; varchar plan }
+    USERS { uuid id PK; uuid tenant_id FK; varchar username UK; varchar email UK; varchar status }
+    ROLES { uuid id PK; uuid tenant_id FK; varchar code UK }
+    PERMISSIONS { uuid id PK; varchar resource; varchar action; varchar scope }
+    MEDIA_ASSETS { uuid id PK; text storage_path; varchar mime_type; varchar checksum; uuid uploaded_by FK }
+    AUDIT_EVENTS { uuid id PK; varchar event_type; uuid entity_id; jsonb old_value; jsonb new_value }
+    OUTBOX_EVENTS { uuid id PK; varchar event_type; jsonb payload; timestamptz processed_at }
+
+    CONTENT_TYPES ||--o{ FIELD_DEFINITIONS : "defines fields"
+    CONTENT_TYPES ||--o{ CATEGORIES : "has categories"
+    CONTENT_TYPES ||--o{ CONTENT_ITEMS : "instances of"
+    SITES ||--o{ MENUS : "has"
+    MENUS ||--o{ MENU_ITEMS : "contains"
+    CATEGORIES ||--o{ CATEGORIES : "parent-child"
+    CONTENT_ITEMS ||--o{ CONTENT_VERSIONS : "versioned by"
+    CONTENT_ITEMS }o--o| CATEGORIES : "classified by"
+    CONTENT_ITEMS }o--o| CONTENT_ITEMS : "parent-child"
+    CONTENT_ITEMS }o--o| WORKFLOW_INSTANCES : "governed by"
+    WORKFLOW_DEFINITIONS ||--o{ WORKFLOW_INSTANCES : "instantiated as"
+    TENANTS ||--o{ USERS : "has"
+    TENANTS ||--o{ ROLES : "defines"
+    USERS }o--o{ ROLES : "assigned"
+    ROLES }o--o{ PERMISSIONS : "grants"
+    MEDIA_ASSETS }o--o| USERS : "uploaded by"</div></div></div>
+      </div>
+
+      <div class="section" id="diag-8">
+        <div class="section-header"><span class="section-num">D8</span><h2 class="section-title">CI/CD Pipeline</h2></div>
+        <div class="diagram-card"><div class="diagram-header"><span class="diagram-title">GitHub Actions → Kubernetes Blue/Green</span><span class="diagram-tag">Zero Downtime</span></div><div class="diagram-body"><div class="mermaid">flowchart TD
+    DEV["Developer pushes\nto feature branch"] --> PR["Pull Request\nto develop"]
+    PR --> V["Stage 1: VALIDATE ⏱ 2min\n• mvn compile\n• Checkstyle · SpotBugs\n• ESLint · TypeScript"]
+    V --> T["Stage 2: TEST ⏱ 10min parallel\n• Unit tests\n• Integration — Testcontainers\n• Frontend tests\n• ArchUnit architecture tests"]
+    T --> B["Stage 3: BUILD ⏱ 5min\n• mvn package\n• Docker build\n• Push to ECR — tag: git SHA"]
+    B --> DD["Stage 4: DEPLOY DEV 🔄 auto\n• helm upgrade\n• Smoke tests\n• E2E subset"]
+    DD --> QA["Stage 5: DEPLOY STAGING 🔄 manual\n• Full E2E tests\n• Performance tests\n• Security scan"]
+    QA --> GATE{"Manual\nApproval\nGate"}
+    GATE --> PROD["Stage 6: DEPLOY PROD\n• Blue/Green deployment\n• Health check gates\n• Traffic 10→50→100%\n• Auto-rollback on fail"]
+    PROD --> MON["Post-Deploy Monitoring\n• Error rate watch\n• Latency watch\n• 15 min observation\n• Auto-rollback if degraded"]
+    style V fill:#14532d,color:#86efac
+    style T fill:#14532d,color:#86efac
+    style B fill:#1e3a5f,color:#93c5fd
+    style DD fill:#451a03,color:#fed7aa
+    style QA fill:#451a03,color:#fed7aa
+    style PROD fill:#450a0a,color:#fca5a5
+    style MON fill:#2e1065,color:#c4b5fd</div></div></div>
+      </div>
+
+      <div class="section" id="diag-9">
+        <div class="section-header"><span class="section-num">D9</span><h2 class="section-title">Migration Timeline (Strangler Fig Pattern)</h2></div>
+        <div class="diagram-card"><div class="diagram-header"><span class="diagram-title">12–16 Week Phased Migration</span><span class="diagram-tag">No Big-Bang Rewrite</span></div><div class="diagram-body"><div class="mermaid">gantt
+    title Migration from Old CMS to NextGen CMS
+    dateFormat  YYYY-MM-DD
+    axisFormat  Week %W
+    section Phase 1 — Foundation
+    Deploy K8s · Kafka · Redis     :2025-01-06, 1w
+    Deploy IAM · Schema · Audit    :2025-01-13, 1w
+    Migrate users and roles        :2025-01-13, 1w
+    Seed content_types from ENUMs  :2025-01-20, 1w
+    section Phase 2 — Content Engine
+    Deploy Content Service         :2025-01-27, 1w
+    Migrate first 5 modules        :2025-01-27, 1w
+    Deploy Workflow · Media svc    :2025-02-03, 1w
+    Migrate remaining 23 modules   :2025-02-03, 1w
+    Verify 100% data parity        :2025-02-10, 1w
+    section Phase 3 — Traffic Cutover
+    10% traffic to new stack       :2025-02-17, 1w
+    25% traffic                    :2025-02-24, 1w
+    50% traffic + new writes       :2025-03-03, 1w
+    100% traffic — old on standby  :2025-03-10, 1w
+    section Phase 4 — Decommission
+    Remove 47 ENUM/Convertor files :2025-03-17, 1w
+    Remove 28 module controllers   :2025-03-17, 1w
+    Archive old DB tables          :2025-03-24, 1w
+    Final performance baseline     :2025-03-24, 1w</div></div></div>
+      </div>
+
+      <div class="section" id="diag-10">
+        <div class="section-header"><span class="section-num">D10</span><h2 class="section-title">Observability Stack</h2></div>
+        <div class="diagram-card"><div class="diagram-header"><span class="diagram-title">Metrics · Traces · Logs</span><span class="diagram-tag">OpenTelemetry · Prometheus · Grafana</span></div><div class="diagram-body"><div class="mermaid">flowchart LR
+    subgraph SVC["Spring Boot Services"]
+      S1["content-service"]
+      S2["workflow-service"]
+      S3["schema-service"]
+      SN["... 6 more services"]
+    end
+    OTEL["OpenTelemetry\nCollector\n(auto-instrumented)"]
+    SVC --> |"Traces · Spans\nLogs · Metrics"| OTEL
+    OTEL --> |Traces| J["Jaeger / Tempo\nDistributed tracing\nTrace ID per request"]
+    OTEL --> |Metrics| P["Prometheus\nScrape endpoint\n/actuator/metrics"]
+    OTEL --> |Logs| ES["Elasticsearch / Loki\nStructured JSON logs\ntraceId · tenantId · userId"]
+    P --> G["Grafana Dashboards\n• Service health\n• Content publish rates\n• Cache hit ratios\n• Kafka consumer lag\n• Workflow SLA metrics"]
+    J --> G
+    ES --> K["Kibana\nLog exploration\nError investigation"]
+    subgraph Alerts["Alertmanager"]
+      -1["PagerDuty\nfor P1/P2"]
+      -2["Slack\nfor P3/P4"]
+    end
+    G --> Alerts</div></div></div>
+      </div>
+
+    </div><!-- /tab-diagrams -->
+
+  </div><!-- /content -->
+</main>
+</div><!-- /shell -->
+
+<script>
+// ── SCHEMA CONTENT ──────────────────────────────────────
+const schemaSql = `# Database Structure Reference
+## NextGen Enterprise CMS — Database-per-Service Design
+
+> **Document Type:** Canonical Database Design Reference  
+> **Project:** NextGen Enterprise CMS  
+> **Version:** 2.0 (database-per-service)  
+> **Supersedes:** Single-cluster 8-schema design  
+> **See also:** \`cms-architecture.md\` (system architecture), \`cms-diagrams.md\` (ERD and container diagrams)
+
+---
+
+## Table of Contents
+
+1. [Schema Strategy](#1-schema-strategy)
+2. [Database Topology — 9 Separate Databases](#2-database-topology--9-separate-databases)
+3. [Cross-Database Reference Rule](#3Across-database-reference-rule)
+4. [iamdb — IAM Service](#4-iamdb--iam-service)
+5. [schemadb — Schema Service](#5-schemadb--schema-service)
+6. [contentdb — Content Service](#6-contentdb--content-service)
+7. [workflowdb — Workflow Service](#7-workflowdb--workflow-service)
+8. [mediadb — Media Service](#8-mediadb--media-service)
+9. [formdb — Form Service](#9-formdb--form-service)
+10. [searchstore — Search Service (OpenSearch)](#10-searchstore--search-service-opensearch)
+11. [notificationdb — Notification Service](#11-notificationdb--notification-service)
+12. [auditdb — Audit Service](#12-auditdb--audit-service)
+13. [Indexing Strategy](#13-indexing-strategy)
+14. [Row-Level Security & Tenant Validation](#14-row-level-security--tenant-validation)
+15. [Migration Strategy — 9 Independent Flyway Histories](#15-migration-strategy--9-independent-flyway-histories)
+16. [Key Query Patterns](#16-key-query-patterns)
+17. [ERD Summary — Per-Database Mini-ERDs](#17-erd-summary--per-database-mini-erds)
+18. [Operational Tradeoffs](#18-operational-tradeoffs)
+
+---
+
+## 1. Schema Strategy
+
+### 1.1 JSONB-Typed Content Body (Not EAV)
+
+Traditional EAV (Entity-Attribute-Value) is avoided. The system uses a **JSONB \`body\` column** per content item with:
+
+- **Flexibility:** Any field can be stored without schema migration
+- **Performance:** PostgreSQL GIN index on \`body\` enables JSONB path queries at millisecond speeds
+- **Integrity:** Content body is validated at write time against \`field_definitions\` (via API call to schema-service)
+- **Queryability:** \`body->>'tender_value'\` or \`body @> '{"status": "open"}'\` with GIN index
+
+### 1.2 Standard Audit Columns (All Tables)
+
+Every table carries:
+
+\`\`\`sql
+created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+created_by   UUID   -- logical ref to iamdb.users, no FK (separate database)
+deleted_at   TIMESTAMPTZ      -- null = active, soft delete pattern
+version      BIGINT NOT NULL DEFAULT 0  -- optimistic locking
+\`\`\`
+
+### 1.3 UUID Primary Keys
+
+All PKs use \`UUID DEFAULT gen_random_uuid()\`. UUIDv7 (time-ordered) is recommended for production to reduce B-tree index fragmentation.
+
+### 1.4 Soft Delete Convention
+
+No hard deletes on content. \`deleted_at IS NULL\` = active record. Application-level Hibernate filters or DB views filter out deleted records by default.
+
+### 1.5 Outbox Pattern — Per-Database Local Tables
+
+Every database that produces domain events contains its **own local \`outbox_events\` table**. Events are written in the same transaction as the business write. - Debezium CDC connector per database reads from its local outbox and publishes to Kafka. There is **no centralized \`cms_core.outbox_events\` table** — that pattern is incompatible with physically separate databases.
+
+---
+
+## 2. Database Topology — 9 Separate Databases
+
+| # | Service | Database | Engine | Owns |
+|---|AAAAA----|AAAAAAAAAA|AAAAA---|AAAAA-|
+| 1 | iam-service | **iamdb** | PostgreSQL 16 | \`tenants\`, \`users\`, \`roles\`, \`permissions\`, \`role_permissions\`, \`user_roles\`, \`api_keys\`, \`refresh_tokens\`, local \`outbox_events\` |
+| 2 | schema-service | **schemadb** | PostgreSQL 16 | \`content_types\`, \`field_definitions\`, \`categories\`, \`sites\`, \`menus\`, \`menu_items\`, local \`outbox_events\` |
+| 3 | content-service | **contentdb** | PostgreSQL 16 | \`content_items\`, \`content_versions\`, local \`outbox_events\` |
+| 4 | workflow-service | **workflowdb** | PostgreSQL 16 | \`workflow_definitions\`, \`workflow_instances\`, \`workflow_history\`, local \`outbox_events\` |
+| 5 | media-service | **mediadb** | PostgreSQL 16 | \`media_assets\`, local \`outbox_events\` |
+| 6 | form-service | **formdb** | PostgreSQL 16 | \`form_definitions\`, \`form_submissions\`, local \`outbox_events\` |
+| 7 | search-service | **searchstore** | **OpenSearch 2.x** | Denormalized search documents — no PostgreSQL schema |
+| 8 | notification-service | **notificationdb** | PostgreSQL 16 | \`notification_templates\`, \`notification_log\`, optional local \`outbox_events\` |
+| 9 | audit-service | **auditdb** | PostgreSQL 16 (partitioned) | \`audit_events\` — pure Kafka consumer, no outbox needed |
+
+**PostgreSQL instance count:** 7 instances (iamdb, schemadb, contentdb, workflowdb, mediadb, formdb, notificationdb) + auditdb (can share a host with any of these but logically separate). Each runs the **same PostgreSQL 16 version** for uniform tooling.
+
+---
+
+## 3. Cross-Database Reference Rule
+
+> [!IMPORTANT]
+> **No foreign key constraint may cross a database boundary.** This is the single most important rule governing every DDL file in this document.
+
+### 3.1 The Rule
+
+When column \`-.x\` in database \`adb\` would naturally reference \`B.id\` in database \`bdb\`, the column becomes a plain UUID column with:
+
+\`\`\`sql
+some_column  UUID NOT NULL  -- logical ref to bdb.table_name, no FK (separate database)
+\`\`\`
+
+Validation is enforced at the **application layer** in two complementary ways:
+
+1. **Synchronous API call at write time** — the writing service calls the owning service's API to verify existence and status before persisting. Example: \`content-service\` calls \`schema-service\` to verify \`content_type_id\` exists before inserting a content item.
+2. **Local read-model cache** (recommended for high-frequency lookups) — the service maintains a local projection table populated from Kafka events emitted by the owning service. Example: \`content-service\` subscribes to \`cms.schema.changed\` events and maintains a local \`content_type_cache\` table. This eliminates the synchronous call on reads.
+
+### 3.2 Affected References — Complete Cross-Reference Map
+
+| Column | In Database | Logical Target | Owning Database | Validation Method |
+|AAAAA---|AAAAAAAAAA---|AAAAAAAAAAAAAAA-|AAAAAAAAAAAAAAA--|AAAAAAAAAAAAAAA----|
+| \`content_items.content_type_id\` | contentdb | \`schemadb.content_types.id\` | schemadb | Sync API at write + local cache |
+| \`content_items.category_id\` | contentdb | \`schemadb.categories.id\` | schemadb | Sync API at write + local cache |
+| \`content_items.site_id\` | contentdb | \`schemadb.sites.id\` | schemadb | Sync API at write + local cache |
+| \`content_items.created_by/updated_by/deleted_by\` | contentdb | \`iamdb.users.id\` | iamdb | JWT claim at write time |
+| \`content_versions.created_by\` | contentdb | \`iamdb.users.id\` | iamdb | JWT claim at write time |
+| \`workflow_history.actor_id\` | workflowdb | \`iamdb.users.id\` | iamdb | JWT claim at write time |
+| \`workflow_history.actor_email\` | workflowdb | (denormalized from JWT) | iamdb | JWT claim — no lookup needed |
+| \`media_assets.uploaded_by\` | mediadb | \`iamdb.users.id\` | iamdb | JWT claim at write time |
+| \`form_submissions.submitted_by\` | formdb | \`iamdb.users.id\` | iamdb | JWT claim (null = anonymous) |
+| \`content_types.workflow_id\` | schemadb | \`workflowdb.workflow_definitions.id\` | workflowdb | Sync API at write |
+| \`menu_items.content_item_id\` | schemadb | \`contentdb.content_items.id\` | contentdb | Sync API at write + no local cache needed (optional link) |
+| \`users.tenant_id\` | iamdb | \`iamdb.tenants.id\` | **same DB** | **Real FK** — both in iamdb |
+| \`roles.tenant_id\` | iamdb | \`iamdb.tenants.id\` | **same DB** | **Real FK** — both in iamdb |
+| \`sites.tenant_id\` | schemadb | \`iamdb.tenants.id\` | iamdb | JWT claim + local tenant cache |
+| \`content_items.tenant_id\` | contentdb | \`iamdb.tenants.id\` | iamdb | JWT claim (verified at Gateway) |
+| \`workflow_instances.entity_id\` | workflowdb | \`contentdb.content_items.id\` (or other) | contentdb | No FK — entity_type+entity_id is a polymorphic reference |
+
+### 3.3 What Keeps Real FKs
+
+Within a single database, real FK constraints are kept wherever they were before:
+- All \`workflowdb\` tables reference each other with real FKs
+- All \`schemadb\` tables reference each other with real FKs (\`menus.site_id → sites.id\`, \`menu_items.menu_id → menus.id\`, \`field_definitions.content_type_id → content_types.id\`, etc.)
+- \`iamdb.users.tenant_id → iamdb.tenants.id\` is a **real FK** (same database)
+- \`iamdb.role_permissions\`, \`iamdb.user_roles\` junction tables keep real FKs within iamdb
+
+---
+
+## 4. iamdb — IAM Service
+
+**Connection string (example):** \`jdbc:postgresql://iam-postgres:5432/iamdb\`  
+**Flyway history:** independent — schema \`flyway_schema_history\` inside iamdb  
+**Debezium connector:** \`debezium-connector-iamdb\` → Kafka topic prefix \`iamdb.iam.*\`
+
+\`\`\`sql
+-- ============================================================
+-- iamdb schema: iam
+-- ============================================================
+CREATE SCHEMA iam;
+
+-- ============================================================
+-- TENANTS — root of the multi-tenant model
+-- ============================================================
+CREATE TABLE iam.tenants (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    code        VARCHAR(100) NOT NULL UNIQUE,    -- e.g. 'acme-corp'
+    name        VARCHAR(255) NOT NULL,
+    domain      VARCHAR(255) UNIQUE,             -- e.g. 'cms.acme.com'
+    plan        VARCHAR(30) NOT NULL DEFAULT 'STANDARD'
+                CHECK (plan IN ('TRIAL','STANDARD','ENTERPRISE')),
+    status      VARCHAR(20) NOT NULL DEFAULT 'ACTIVE'
+                CHECK (status IN ('ACTIVE','SUSPENDED','TRIAL','CANCELLED')),
+    settings    JSONB NOT NULL DEFAULT '{}',     -- UI config, feature flags per tenant
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- ============================================================
+-- USERS
+-- ============================================================
+CREATE TABLE iam.users (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id       UUID NOT NULL REFERENCES iam.tenants(id), -- real FK, same DB
+    username        VARCHAR(100) NOT NULL,
+    email           VARCHAR(255) NOT NULL,
+    password_hash   VARCHAR(255) NOT NULL,           -- bcrypt, cost 12+
+    full_name       VARCHAR(255),
+    avatar_url      TEXT,
+    status          VARCHAR(20) NOT NULL DEFAULT 'ACTIVE'
+                    CHECK (status IN ('ACTIVE','INACTIVE','LOCKED','PENDING')),
+    failed_attempts INT NOT NULL DEFAULT 0,
+    locked_until    TIMESTAMPTZ,
+    last_login_at   TIMESTAMPTZ,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_by      UUID,                            -- logical ref to iam.users(id), no FK (self-ref allowed)
+    version         BIGINT NOT NULL DEFAULT 0,
+    UNIQUE(tenant_id, username),
+    UNIQUE(tenant_id, email)
+);
+
+-- ============================================================
+-- ROLES
+-- ============================================================
+CREATE TABLE iam.roles (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id       UUID NOT NULL REFERENCES iam.tenants(id), -- real FK, same DB
+    name            VARCHAR(100) NOT NULL,
+    code            VARCHAR(50) NOT NULL,
+    description     TEXT,
+    is_system_role  BOOLEAN NOT NULL DEFAULT false,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(tenant_id, code)
+);
+
+-- ============================================================
+-- PERMISSIONS
+-- ============================================================
+CREATE TABLE iam.permissions (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    resource    VARCHAR(100) NOT NULL,  -- 'content', 'tender', 'media', 'schema'
+    action      VARCHAR(50) NOT NULL,   -- 'CREATE', 'READ', 'UPDATE', 'DELETE', 'PUBLISH'
+    scope       VARCHAR(50),            -- 'OWN', 'DEPT', 'ALL'
+    description TEXT,
+    UNIQUE(resource, action, scope)
+);
+
+-- ============================================================
+-- ROLE-PERMISSION JUNCTION
+-- ============================================================
+CREATE TABLE iam.role_permissions (
+    role_id         UUID NOT NULL REFERENCES iam.roles(id) ON DELETE CASCADE,
+    permission_id   UUID NOT NULL REFERENCES iam.permissions(id) ON DELETE CASCADE,
+    PRIMARY KEY (role_id, permission_id)
+);
+
+-- ============================================================
+-- USER-ROLE JUNCTION
+-- ============================================================
+CREATE TABLE iam.user_roles (
+    user_id         UUID NOT NULL REFERENCES iam.users(id) ON DELETE CASCADE,
+    role_id         UUID NOT NULL REFERENCES iam.roles(id) ON DELETE CASCADE,
+    granted_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    granted_by      UUID,   -- logical ref to iam.users(id), no FK to avoid cycles
+    expires_at      TIMESTAMPTZ,
+    PRIMARY KEY (user_id, role_id)
+);
+
+-- ============================================================
+-- API KEYS (for external consumers)
+-- ============================================================
+CREATE TABLE iam.api_keys (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id       UUID NOT NULL REFERENCES iam.tenants(id),
+    name            VARCHAR(100) NOT NULL,
+    key_hash        VARCHAR(255) NOT NULL UNIQUE,  -- SHA-256 of raw key
+    prefix          VARCHAR(10) NOT NULL,
+    scopes          TEXT[] NOT NULL DEFAULT '{}',
+    rate_limit_rpm  INT NOT NULL DEFAULT 60,
+    last_used_at    TIMESTAMPTZ,
+    expires_at      TIMESTAMPTZ,
+    is_active       BOOLEAN NOT NULL DEFAULT true,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_by      UUID   -- logical ref to iam.users(id)
+);
+
+-- ============================================================
+-- REFRESH TOKENS
+-- ============================================================
+CREATE TABLE iam.refresh_tokens (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id     UUID NOT NULL REFERENCES iam.users(id) ON DELETE CASCADE,
+    token_hash  VARCHAR(255) NOT NULL UNIQUE,
+    expires_at  TIMESTAMPTZ NOT NULL,
+    issued_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    revoked_at  TIMESTAMPTZ,
+    ip_address  INET,
+    user_agent  TEXT
+);
+
+-- ============================================================
+-- LOCAL OUTBOX (Debezium CDC → Kafka)
+-- ============================================================
+CREATE TABLE iam.outbox_events (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    aggregate_type  VARCHAR(100) NOT NULL,  -- 'user', 'role', 'tenant'
+    aggregate_id    UUID NOT NULL,
+    event_type      VARCHAR(200) NOT NULL,  -- 'cms.user.login', 'cms.user.role.changed'
+    payload         JSONB NOT NULL,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    processed_at    TIMESTAMPTZ,            -- set by Debezium after publish
+    retry_count     INT NOT NULL DEFAULT 0,
+    error_message   TEXT
+);
+
+-- Indexes
+CREATE INDEX idx_iam_users_tenant ON iam.users(tenant_id);
+CREATE INDEX idx_iam_users_email ON iam.users(tenant_id, email);
+CREATE INDEX idx_iam_refresh_tokens_user ON iam.refresh_tokens(user_id);
+CREATE INDEX idx_iam_api_keys_tenant ON iam.api_keys(tenant_id) WHERE is_active = true;
+CREATE INDEX idx_iam_outbox_unprocessed ON iam.outbox_events(created_at) WHERE processed_at IS NULL;
+\`\`\`
+
+---
+
+## 5. schemadb — Schema Service
+
+**Connection string:** \`jdbc:postgresql://schema-postgres:5432/schemadb\`  
+**Flyway history:** independent inside schemadb  
+**Debezium connector:** \`debezium-connector-schemadb\` → Kafka topic prefix \`schemadb.schema.*\`
+
+\`\`\`sql
+-- ============================================================
+-- schemadb schema: schema
+-- ============================================================
+CREATE SCHEMA schema;
+
+-- ============================================================
+-- CONTENT TYPES (dynamic content type registry)
+-- ============================================================
+CREATE TABLE schema.content_types (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id       UUID NOT NULL,  -- logical ref to iamdb.tenants, no FK (separate database)
+    code            VARCHAR(100) NOT NULL,
+    display_name    VARCHAR(255) NOT NULL,
+    description     TEXT,
+    icon            VARCHAR(100),
+    is_hierarchical BOOLEAN NOT NULL DEFAULT false,
+    is_versionable  BOOLEAN NOT NULL DEFAULT true,
+    is_schedulable  BOOLEAN NOT NULL DEFAULT true,
+    has_workflow    BOOLEAN NOT NULL DEFAULT false,
+    workflow_id     UUID,           -- logical ref to workflowdb.workflow_definitions, no FK
+    workflow_code   VARCHAR(100),   -- denormalized for cache hits without a lookup
+    default_persona VARCHAR(100),
+    metadata        JSONB NOT NULL DEFAULT '{}',
+    status          VARCHAR(20) NOT NULL DEFAULT 'ACTIVE'
+                    CHECK (status IN ('ACTIVE','DRAFT','DEPRECATED')),
+    version         INT NOT NULL DEFAULT 1,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_by      UUID,           -- logical ref to iamdb.users, no FK (separate database)
+    UNIQUE(tenant_id, code)
+);
+
+-- ============================================================
+-- FIELD DEFINITIONS
+-- ============================================================
+CREATE TABLE schema.field_definitions (
+    id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    content_type_id  UUID NOT NULL REFERENCES schema.content_types(id) ON DELETE CASCADE,  -- real FK, same DB
+    field_key        VARCHAR(100) NOT NULL,
+    display_label    VARCHAR(255) NOT NULL,
+    field_type       VARCHAR(50) NOT NULL
+                     CHECK (field_type IN (
+                         'TEXT','NUMBER','DATE','DATETIME','BOOLEAN',
+                         'FILE','RICHTEXT','JSON','RELATION',
+                         'SELECT','MULTISELECT'
+                     )),
+    is_required      BOOLEAN NOT NULL DEFAULT false,
+    is_searchable    BOOLEAN NOT NULL DEFAULT false,
+    is_filterable    BOOLEAN NOT NULL DEFAULT false,
+    is_listable      BOOLEAN NOT NULL DEFAULT true,
+    display_order    INT NOT NULL DEFAULT 0,
+    default_value    TEXT,
+    validation_rules JSONB NOT NULL DEFAULT '{}',
+    ui_config        JSONB NOT NULL DEFAULT '{}',
+    relation_config  JSONB,
+    group_name       VARCHAR(100),
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(content_type_id, field_key)
+);
+
+-- ============================================================
+-- CATEGORIES
+-- ============================================================
+CREATE TABLE schema.categories (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    content_type_id UUID NOT NULL REFERENCES schema.content_types(id) ON DELETE CASCADE,  -- real FK, same DB
+    code            VARCHAR(100) NOT NULL,
+    display_name    VARCHAR(255) NOT NULL,
+    parent_id       UUID REFERENCES schema.categories(id),  -- real FK, same DB
+    description     TEXT,
+    icon            VARCHAR(100),
+    metadata        JSONB NOT NULL DEFAULT '{}',
+    display_order   INT NOT NULL DEFAULT 0,
+    is_active       BOOLEAN NOT NULL DEFAULT true,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(content_type_id, code)
+);
+
+-- ============================================================
+-- SITES (replaces free-text website_location)
+-- ============================================================
+CREATE TABLE schema.sites (
+    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id    UUID NOT NULL,  -- logical ref to iamdb.tenants, no FK (separate database)
+    code         VARCHAR(100) NOT NULL,       -- e.g. 'main-site', 'mobile-portal'
+    name         VARCHAR(255) NOT NULL,
+    domain       VARCHAR(255),               -- e.g. 'www.acme.com'
+    locale       VARCHAR(10) NOT NULL DEFAULT 'en',
+    theme_config JSONB NOT NULL DEFAULT '{}',
+    is_active    BOOLEAN NOT NULL DEFAULT true,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(tenant_id, code)
+);
+
+-- ============================================================
+-- MENUS
+-- ============================================================
+CREATE TABLE schema.menus (
+    id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    site_id   UUID NOT NULL REFERENCES schema.sites(id) ON DELETE CASCADE,  -- real FK, same DB
+    code      VARCHAR(100) NOT NULL,
+    name      VARCHAR(255) NOT NULL,
+    location  VARCHAR(50) NOT NULL           -- 'header' | 'footer' | 'sidebar'
+              CHECK (location IN ('header','footer','sidebar','custom')),
+    UNIQUE(site_id, code)
+);
+
+-- ============================================================
+-- MENU ITEMS
+-- ============================================================
+CREATE TABLE schema.menu_items (
+    id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    menu_id           UUID NOT NULL REFERENCES schema.menus(id) ON DELETE CASCADE,    -- real FK, same DB
+    parent_id         UUID REFERENCES schema.menu_items(id),                          -- real FK, same DB
+    label             VARCHAR(255) NOT NULL,
+    link_type         VARCHAR(20) NOT NULL
+                      CHECK (link_type IN ('CONTENT','EXTERNAL','CATEGORY')),
+    content_item_id   UUID,    -- logical ref to contentdb.content_items, no FK (separate database)
+    external_url      TEXT,
+    category_id       UUID REFERENCES schema.categories(id),    -- real FK, same DB
+    display_order     INT NOT NULL DEFAULT 0,
+    is_active         BOOLEAN NOT NULL DEFAULT true
+);
+
+-- ============================================================
+-- LOCAL OUTBOX (Debezium CDC → Kafka)
+-- ============================================================
+CREATE TABLE schema.outbox_events (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    aggregate_type  VARCHAR(100) NOT NULL,   -- 'content_type', 'site', 'menu'
+    aggregate_id    UUID NOT NULL,
+    event_type      VARCHAR(200) NOT NULL,   -- 'cms.schema.changed', 'cms.site.created'
+    payload         JSONB NOT NULL,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    processed_at    TIMESTAMPTZ,
+    retry_count     INT NOT NULL DEFAULT 0,
+    error_message   TEXT
+);
+
+-- Indexes
+CREATE INDEX idx_schema_content_types_tenant ON schema.content_types(tenant_id);
+CREATE INDEX idx_schema_sites_tenant ON schema.sites(tenant_id);
+CREATE INDEX idx_schema_sites_code ON schema.sites(tenant_id, code);
+CREATE INDEX idx_schema_menus_site ON schema.menus(site_id);
+CREATE INDEX idx_schema_menu_items_menu ON schema.menu_items(menu_id, display_order);
+CREATE INDEX idx_schema_outbox_unprocessed ON schema.outbox_events(created_at) WHERE processed_at IS NULL;
+\`\`\`
+
+---
+
+## 6. contentdb — Content Service
+
+**Connection string:** \`jdbc:postgresql://content-postgres:5432/contentdb\`  
+**Flyway history:** independent inside contentdb  
+**Debezium connector:** \`debezium-connector-contentdb\` → Kafka topic prefix \`contentdb.content.*\`
+
+> **Key change from prior design:** \`website_location VARCHAR(100)\` is replaced by \`site_id UUID\` (logical ref to schemadb.sites) + \`site_code VARCHAR(100)\` (denormalized for fast filtering without a cross-DB join). The Redis cache key \`menu:{location}\` becomes \`menu:{siteCode}:{location}\`.
+
+\`\`\`sql
+-- ============================================================
+-- contentdb schema: content
+-- ============================================================
+CREATE SCHEMA content;
+
+-- ============================================================
+-- CONTENT ITEMS (universal content store)
+-- ============================================================
+CREATE TABLE content.content_items (
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id           UUID NOT NULL,
+    -- logical ref to schemadb.content_types, no FK (separate database)
+    content_type_id     UUID NOT NULL,
+    -- denormalized from content type for fast filtering without join
+    content_type_code   VARCHAR(100) NOT NULL,
+    title               VARCHAR(500) NOT NULL,
+    slug                VARCHAR(500),
+    body                JSONB NOT NULL DEFAULT '{}',
+    status              VARCHAR(30) NOT NULL DEFAULT 'DRAFT'
+                        CHECK (status IN (
+                            'DRAFT','IN_REVIEW','APPROVED','PUBLISHED',
+                            'SCHEDULED','ARCHIVED','TRASHED','REJECTED'
+                        )),
+    -- logical ref to schemadb.categories, no FK (separate database)
+    category_id         UUID,
+    -- denormalized for fast display/filtering without sync API call
+    category_code       VARCHAR(100),
+    -- hierarchical content (self-referential — real FK, same DB)
+    parent_id           UUID REFERENCES content.content_items(id),
+    folder_path         TEXT,
+    -- replaces website_location VARCHAR — real site identity
+    site_id             UUID NOT NULL,         -- logical ref to schemadb.sites, no FK (separate database)
+    site_code           VARCHAR(100) NOT NULL, -- denormalized for filtering/caching
+    persona             VARCHAR(100),
+    publish_at          TIMESTAMPTZ,
+    expire_at           TIMESTAMPTZ,
+    published_at        TIMESTAMPTZ,
+    current_version     INT NOT NULL DEFAULT 1,
+    -- logical ref to workflowdb.workflow_instances, no FK (separate database)
+    workflow_instance_id UUID,
+    media_ids           UUID[] DEFAULT '{}',
+    tags                TEXT[] DEFAULT '{}',
+    external_link       TEXT,
+    order_index         INT NOT NULL DEFAULT 0,
+    is_featured         BOOLEAN NOT NULL DEFAULT false,
+    view_count          BIGINT NOT NULL DEFAULT 0,
+    metadata            JSONB NOT NULL DEFAULT '{}',
+    -- audit columns — user identity from JWT, no FK to iamdb (separate database)
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_by          UUID,   -- logical ref to iamdb.users, no FK (separate database)
+    updated_by          UUID,   -- logical ref to iamdb.users, no FK (separate database)
+    deleted_at          TIMESTAMPTZ,
+    deleted_by          UUID,   -- logical ref to iamdb.users, no FK (separate database)
+    version             BIGINT NOT NULL DEFAULT 0
+);
+
+-- Unique slug per type+site+tenant (partial index excludes deleted)
+CREATE UNIQUE INDEX idx_content_slug_unique
+    ON content.content_items(tenant_id, content_type_code, site_id, slug)
+    WHERE deleted_at IS NULL;
+
+CREATE INDEX idx_content_type_status
+    ON content.content_items(content_type_code, status)
+    WHERE deleted_at IS NULL;
+
+CREATE INDEX idx_content_tenant
+    ON content.content_items(tenant_id)
+    WHERE deleted_at IS NULL;
+
+CREATE INDEX idx_content_category
+    ON content.content_items(category_id)
+    WHERE deleted_at IS NULL;
+
+-- site_code used for fast filtering and Redis cache key construction
+CREATE INDEX idx_content_site_code
+    ON content.content_items(site_code)
+    WHERE deleted_at IS NULL;
+
+CREATE INDEX idx_content_publish_at
+    ON content.content_items(publish_at)
+    WHERE status = 'SCHEDULED';
+
+CREATE INDEX idx_content_expire_at
+    ON content.content_items(expire_at)
+    WHERE deleted_at IS NULL AND status = 'PUBLISHED';
+
+CREATE INDEX idx_content_parent
+    ON content.content_items(parent_id)
+    WHERE deleted_at IS NULL;
+
+CREATE INDEX idx_content_body
+    ON content.content_items USING GIN(body);
+
+CREATE INDEX idx_content_tags
+    ON content.content_items USING GIN(tags);
+
+CREATE INDEX idx_content_folder_path
+    ON content.content_items(folder_path text_pattern_ops);
+
+CREATE INDEX idx_content_featured
+    ON content.content_items(content_type_code, site_code, order_index)
+    WHERE is_featured = true AND status = 'PUBLISHED' AND deleted_at IS NULL;
+
+-- ============================================================
+-- CONTENT VERSIONS (immutable history)
+-- ============================================================
+CREATE TABLE content.content_versions (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    content_item_id UUID NOT NULL REFERENCES content.content_items(id) ON DELETE CASCADE,  -- real FK, same DB
+    version_number  INT NOT NULL,
+    title           VARCHAR(500) NOT NULL,
+    body            JSONB NOT NULL,
+    status          VARCHAR(30) NOT NULL,
+    change_summary  TEXT,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_by      UUID,   -- logical ref to iamdb.users, no FK (separate database)
+    UNIQUE(content_item_id, version_number)
+);
+
+-- ============================================================
+-- LOCAL OUTBOX (Debezium CDC → Kafka)
+-- ============================================================
+CREATE TABLE content.outbox_events (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    aggregate_type  VARCHAR(100) NOT NULL,   -- 'content_item'
+    aggregate_id    UUID NOT NULL,
+    event_type      VARCHAR(200) NOT NULL,   -- 'cms.content.created', 'cms.content.published'
+    payload         JSONB NOT NULL,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    processed_at    TIMESTAMPTZ,
+    retry_count     INT NOT NULL DEFAULT 0,
+    error_message   TEXT
+);
+
+CREATE INDEX idx_content_outbox_unprocessed
+    ON content.outbox_events(created_at)
+    WHERE processed_at IS NULL;
+\`\`\`
+
+---
+
+## 7. workflowdb — Workflow Service
+
+**Connection string:** \`jdbc:postgresql://workflow-postgres:5432/workflowdb\`  
+**Flyway history:** independent inside workflowdb  
+**Debezium connector:** \`debezium-connector-workflowdb\` → Kafka topic prefix \`workflowdb.workflow.*\`
+
+\`\`\`sql
+CREATE SCHEMA workflow;
+
+-- ============================================================
+-- WORKFLOW DEFINITIONS (JSONB state machine configs)
+-- ============================================================
+CREATE TABLE workflow.workflow_definitions (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id   UUID NOT NULL,  -- logical ref to iamdb.tenants, no FK (separate database)
+    code        VARCHAR(100) NOT NULL,
+    name        VARCHAR(255) NOT NULL,
+    description TEXT,
+    definition  JSONB NOT NULL,  -- states, transitions, guards, actions
+    version     INT NOT NULL DEFAULT 1,
+    is_active   BOOLEAN NOT NULL DEFAULT true,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(tenant_id, code, version)
+);
+
+-- ============================================================
+-- WORKFLOW INSTANCES
+-- ============================================================
+CREATE TABLE workflow.workflow_instances (
+    id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    workflow_def_id      UUID NOT NULL REFERENCES workflow.workflow_definitions(id),  -- real FK, same DB
+    workflow_def_version INT NOT NULL,  -- pinned at creation time
+    entity_type          VARCHAR(100) NOT NULL,  -- 'content_item', 'form_submission'
+    entity_id            UUID NOT NULL,           -- logical ref — polymorphic, no FK
+    current_state        VARCHAR(50) NOT NULL,
+    started_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    completed_at         TIMESTAMPTZ,
+    metadata             JSONB NOT NULL DEFAULT '{}'
+);
+
+CREATE INDEX idx_workflow_entity
+    ON workflow.workflow_instances(entity_type, entity_id);
+
+-- ============================================================
+-- WORKFLOW HISTORY (append-only transition log)
+-- ============================================================
+CREATE TABLE workflow.workflow_history (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    instance_id UUID NOT NULL REFERENCES workflow.workflow_instances(id),  -- real FK, same DB
+    from_state  VARCHAR(50) NOT NULL,
+    to_state    VARCHAR(50) NOT NULL,
+    trigger     VARCHAR(100) NOT NULL,
+    actor_id    UUID,           -- logical ref to iamdb.users, no FK (separate database)
+    actor_email VARCHAR(255),   -- denormalized from JWT for audit durability
+    comment     TEXT,
+    occurred_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    metadata    JSONB NOT NULL DEFAULT '{}'
+);
+
+CREATE INDEX idx_workflow_history_instance ON workflow.workflow_history(instance_id);
+CREATE INDEX idx_workflow_history_actor ON workflow.workflow_history(actor_id);
+CREATE INDEX idx_workflow_history_time ON workflow.workflow_history(occurred_at DESC);
+
+-- ============================================================
+-- LOCAL OUTBOX
+-- ============================================================
+CREATE TABLE workflow.outbox_events (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    aggregate_type  VARCHAR(100) NOT NULL,
+    aggregate_id    UUID NOT NULL,
+    event_type      VARCHAR(200) NOT NULL,
+    payload         JSONB NOT NULL,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    processed_at    TIMESTAMPTZ,
+    retry_count     INT NOT NULL DEFAULT 0,
+    error_message   TEXT
+);
+
+CREATE INDEX idx_workflow_outbox_unprocessed
+    ON workflow.outbox_events(created_at) WHERE processed_at IS NULL;
+\`\`\`
+
+---
+
+## 8. mediadb — Media Service
+
+**Connection string:** \`jdbc:postgresql://media-postgres:5432/mediadb\`  
+**Flyway history:** independent inside mediadb
+
+\`\`\`sql
+CREATE SCHEMA media;
+
+CREATE TABLE media.media_assets (
+    id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id        UUID NOT NULL,   -- logical ref to iamdb.tenants, no FK
+    original_name    VARCHAR(500) NOT NULL,
+    stored_name      VARCHAR(500) NOT NULL,
+    storage_path     TEXT NOT NULL,
+    storage_backend  VARCHAR(50) NOT NULL DEFAULT 'LOCAL'
+                     CHECK (storage_backend IN ('LOCAL','S3','GCS','AZURE_BLOB')),
+    mime_type        VARCHAR(100) NOT NULL,
+    file_size_bytes  BIGINT NOT NULL,
+    checksum         VARCHAR(64),    -- SHA-256 for deduplication
+    alt_text         TEXT,
+    caption          TEXT,
+    width            INT,
+    height           INT,
+    duration_ms      INT,
+    is_public        BOOLEAN NOT NULL DEFAULT false,
+    folder_path      TEXT NOT NULL DEFAULT '/',
+    tags             TEXT[] DEFAULT '{}',
+    metadata         JSONB NOT NULL DEFAULT '{}',
+    cdn_url          TEXT,
+    thumbnail_url    TEXT,
+    uploaded_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    uploaded_by      UUID,   -- logical ref to iamdb.users, no FK (separate database)
+    deleted_at       TIMESTAMPTZ
+);
+
+CREATE UNIQUE INDEX idx_media_checksum_tenant
+    ON media.media_assets(tenant_id, checksum)
+    WHERE deleted_at IS NULL AND checksum IS NOT NULL;
+
+CREATE INDEX idx_media_tenant ON media.media_assets(tenant_id) WHERE deleted_at IS NULL;
+CREATE INDEX idx_media_folder ON media.media_assets(folder_path text_pattern_ops) WHERE deleted_at IS NULL;
+CREATE INDEX idx_media_tags ON media.media_assets USING GIN(tags);
+
+CREATE TABLE media.outbox_events (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    aggregate_type  VARCHAR(100) NOT NULL,
+    aggregate_id    UUID NOT NULL,
+    event_type      VARCHAR(200) NOT NULL,   -- 'cms.media.uploaded'
+    payload         JSONB NOT NULL,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    processed_at    TIMESTAMPTZ,
+    retry_count     INT NOT NULL DEFAULT 0,
+    error_message   TEXT
+);
+
+CREATE INDEX idx_media_outbox_unprocessed
+    ON media.outbox_events(created_at) WHERE processed_at IS NULL;
+\`\`\`
+
+---
+
+## 9. formdb — Form Service
+
+**Connection string:** \`jdbc:postgresql://form-postgres:5432/formdb\`  
+**Flyway history:** independent inside formdb
+
+\`\`\`sql
+CREATE SCHEMA form;
+
+CREATE TABLE form.form_definitions (
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id     UUID NOT NULL,  -- logical ref to iamdb.tenants, no FK
+    site_id       UUID,           -- logical ref to schemadb.sites, no FK (optional per-site forms)
+    code          VARCHAR(100) NOT NULL,
+    name          VARCHAR(255) NOT NULL,
+    description   TEXT,
+    schema        JSONB NOT NULL,       -- JSON Schema for validation
+    ui_schema     JSONB NOT NULL,       -- react-jsonschema-form UI schema
+    submit_action VARCHAR(100),
+    is_active     BOOLEAN NOT NULL DEFAULT true,
+    version       INT NOT NULL DEFAULT 1,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(tenant_id, code)
+);
+
+CREATE TABLE form.form_submissions (
+    id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    form_id        UUID NOT NULL REFERENCES form.form_definitions(id),  -- real FK, same DB
+    submitted_data JSONB NOT NULL,
+    submitted_by   UUID,   -- logical ref to iamdb.users, no FK (null = anonymous)
+    submitted_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    ip_address     INET,
+    user_agent     TEXT,
+    status         VARCHAR(30) NOT NULL DEFAULT 'RECEIVED'
+                   CHECK (status IN ('RECEIVED','PROCESSING','PROCESSED','REJECTED'))
+);
+
+CREATE INDEX idx_form_submissions_form ON form.form_submissions(form_id, submitted_at DESC);
+CREATE INDEX idx_form_submissions_status ON form.form_submissions(status);
+
+CREATE TABLE form.outbox_events (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    aggregate_type  VARCHAR(100) NOT NULL,
+    aggregate_id    UUID NOT NULL,
+    event_type      VARCHAR(200) NOT NULL,   -- 'cms.form.submitted'
+    payload         JSONB NOT NULL,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    processed_at    TIMESTAMPTZ,
+    retry_count     INT NOT NULL DEFAULT 0,
+    error_message   TEXT
+);
+
+CREATE INDEX idx_form_outbox_unprocessed
+    ON form.outbox_events(created_at) WHERE processed_at IS NULL;
+\`\`\`
+
+---
+
+## 10. searchstore — Search Service (OpenSearch)
+
+**No PostgreSQL database.** search-service uses **OpenSearch 2.x** as its sole data store.
+
+### 10.1 Why OpenSearch, Not PostgreSQL
+
+The search index must be denormalized, fully self-contained, and optimized for faceted, full-text queries that previously required cross-schema JOINs. With database-per-service, those JOINs are impossible in SQL. OpenSearch's document model naturally represents the denormalized form.
+
+### 10.2 Index Document Structure
+
+The search-service consumes Kafka events from \`cms.content.published\`, \`cms.content.updated\`, \`cms.content.archived\`, and other services, and maintains a fully denormalized document per content item. **Search queries never call back to content-service.** If the UI needs full content details after a hit, that is a separate follow-up \`GET /api/v1/content/{type}/{id}\` call to content-service.
+
+\`\`\`json
+// Index: cms-content-{tenantCode} (one index per tenant)
+// Document ID: content_item UUID
+{
+  "id": "uuid",
+  "tenant_id": "uuid",
+  "content_type_code": "tender_notice",
+  "content_type_name": "Tender Notice",
+  "title": "Tender for Bridge Construction 2026",
+  "slug": "tender-bridge-2026",
+  "body_text": "flattened text from all TEXT/RICHTEXT fields",
+  "tags": ["infrastructure", "bridge"],
+  "category_code": "open_tender",
+  "category_name": "Open Tender",
+  "site_id": "uuid",
+  "site_code": "main-site",
+  "persona": "vendors",
+  "status": "PUBLISHED",
+  "published_at": "2026-06-19T10:00:00Z",
+  "created_by_email": "author@acme.com",
+  "selected_fields": {
+    "tender_value": 5000000,
+    "bid_submission_end": "2026-07-31T23:59:00Z",
+    "organisation_code": "CG57006"
+  },
+  "indexed_at": "2026-06-19T10:00:05Z"
+}
+\`\`\`
+
+### 10.3 OpenSearch Index Settings
+
+\`\`\`json
+{
+  "settings": {
+    "number_of_shards": 3,
+    "number_of_replicas": 1,
+    "analysis": {
+      "analyzer": {
+        "cms_analyzer": {
+          "type": "standard",
+          "stopwords": "_english_"
+        }
+      }
+    }
+  },
+  "mappings": {
+    "properties": {
+      "title":        { "type": "text", "boost": 3, "analyzer": "cms_analyzer" },
+      "body_text":    { "type": "text", "boost": 1, "analyzer": "cms_analyzer" },
+      "tags":         { "type": "keyword" },
+      "status":       { "type": "keyword" },
+      "site_code":    { "type": "keyword" },
+      "content_type_code": { "type": "keyword" },
+      "category_code":     { "type": "keyword" },
+      "published_at": { "type": "date" },
+      "selected_fields": { "type": "object", "dynamic": true }
+    }
+  }
+}
+\`\`\`
+
+---
+
+## 11. notificationdb — Notification Service
+
+**Connection string:** \`jdbc:postgresql://notification-postgres:5432/notificationdb\`  
+**Flyway history:** independent inside notificationdb
+
+\`\`\`sql
+CREATE SCHEMA notification;
+
+-- ============================================================
+-- NOTIFICATION TEMPLATES (configurable by Admin)
+-- ============================================================
+CREATE TABLE notification.notification_templates (
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id     UUID NOT NULL,   -- logical ref to iamdb.tenants, no FK
+    code          VARCHAR(100) NOT NULL,     -- e.g. 'review_requested', 'content_approved'
+    name          VARCHAR(255) NOT NULL,
+    channel       VARCHAR(20) NOT NULL
+                  CHECK (channel IN ('EMAIL','SMS','IN_APP')),
+    subject       TEXT,                      -- email subject (supports template vars)
+    body_template TEXT NOT NULL,             -- Mustache/Thymeleaf template
+    is_active     BOOLEAN NOT NULL DEFAULT true,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(tenant_id, code, channel)
+);
+
+-- ============================================================
+-- NOTIFICATION LOG (delivery tracking, 90-day retention)
+-- ============================================================
+CREATE TABLE notification.notification_log (
+    id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id         UUID NOT NULL,   -- logical ref to iamdb.tenants, no FK
+    notification_type VARCHAR(50) NOT NULL CHECK (notification_type IN ('EMAIL','SMS','IN_APP')),
+    recipient         VARCHAR(255) NOT NULL,
+    template_code     VARCHAR(100) NOT NULL,
+    payload           JSONB NOT NULL,
+    status            VARCHAR(20) NOT NULL DEFAULT 'PENDING'
+                      CHECK (status IN ('PENDING','SENT','FAILED','RETRYING')),
+    sent_at           TIMESTAMPTZ,
+    error_message     TEXT,
+    retry_count       INT NOT NULL DEFAULT 0,
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_notif_log_status ON notification.notification_log(status);
+CREATE INDEX idx_notif_log_tenant ON notification.notification_log(tenant_id, created_at DESC);
+
+-- ============================================================
+-- LOCAL OUTBOX (optional — for 'notification.sent' events)
+-- If notification-service emits its own domain events (e.g. for analytics),
+-- add this table. If it is a pure consumer, omit it.
+-- ============================================================
+CREATE TABLE notification.outbox_events (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    aggregate_type  VARCHAR(100) NOT NULL,
+    aggregate_id    UUID NOT NULL,
+    event_type      VARCHAR(200) NOT NULL,   -- 'cms.notification.sent'
+    payload         JSONB NOT NULL,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    processed_at    TIMESTAMPTZ,
+    retry_count     INT NOT NULL DEFAULT 0,
+    error_message   TEXT
+);
+-- Include the outbox connector only if notification-service is configured as a producer.
+\`\`\`
+
+---
+
+## 12. auditdb — Audit Service
+
+**Connection string:** \`jdbc:postgresql://audit-postgres:5432/auditdb\`  
+**Flyway history:** independent inside auditdb  
+**Role:** Pure Kafka consumer. Consumes events from **all** other services' Debezium outbox streams. Does **not** produce domain events and therefore does **not** need its own \`outbox_events\` table.
+
+\`\`\`sql
+CREATE SCHEMA audit;
+
+-- APPEND-ONLY: No UPDATE or DELETE permitted on audit_events.
+-- Partitioned by month for query performance and archival.
+
+CREATE TABLE audit.audit_events (
+    id              UUID NOT NULL DEFAULT gen_random_uuid(),
+    event_type      VARCHAR(100) NOT NULL,       -- 'cms.content.published', 'cms.user.login'
+    actor_id        UUID,    -- logical ref to iamdb.users — denormalized, stored as-is
+    actor_email     VARCHAR(255),                -- denormalized from JWT/event payload
+    entity_type     VARCHAR(100),                -- 'content_item', 'user', 'workflow_instance'
+    entity_id       UUID,
+    tenant_id       UUID,
+    source_service  VARCHAR(100),                -- 'content-service', 'workflow-service', etc.
+    old_value       JSONB,
+    new_value       JSONB,
+    ip_address      INET,
+    user_agent      TEXT,
+    occurred_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    correlation_id  UUID                         -- trace ID for cross-service correlation
+) PARTITION BY RANGE (occurred_at);
+
+-- Monthly partitions (automate with pg_partman in production):
+CREATE TABLE audit.audit_events_2026_01 PARTITION OF audit.audit_events
+    FOR VALUES FROM ('2026-01-01') TO ('2026-02-01');
+CREATE TABLE audit.audit_events_2026_02 PARTITION OF audit.audit_events
+    FOR VALUES FROM ('2026-02-01') TO ('2026-03-01');
+-- ... continue per month. pg_partman automates future partition creation.
+
+CREATE INDEX idx_audit_entity ON audit.audit_events(entity_type, entity_id);
+CREATE INDEX idx_audit_actor ON audit.audit_events(actor_id);
+CREATE INDEX idx_audit_type ON audit.audit_events(event_type);
+CREATE INDEX idx_audit_tenant ON audit.audit_events(tenant_id);
+CREATE INDEX idx_audit_time ON audit.audit_events(occurred_at DESC);
+
+-- Enforce append-only: application role may only INSERT
+ALTER TABLE audit.audit_events ENABLE ROW LEVEL SECURITY;
+CREATE POLICY audit_append_only ON audit.audit_events
+    TO cms_audit_app_role
+    FOR INSERT WITH CHECK (true);
+-- No SELECT/UPDATE/DELETE policy for cms_audit_app_role.
+-- - separate read-only role (cms_audit_read_role) is used for queries.
+\`\`\`
+
+---
+
+## 13. Indexing Strategy
+
+### Summary Table
+
+| Index Type | Use Case | Databases |
+|AAAAAAAAAA-|AAAAA----|AAAAAAAAAA-|
+| B-tree (default) | Equality, range on typed columns | All PostgreSQL databases |
+| Partial B-tree | Filtered queries with fixed WHERE clause | \`WHERE deleted_at IS NULL\`, \`WHERE status = 'SCHEDULED'\`, \`WHERE processed_at IS NULL\` |
+| GIN on JSONB | JSONB containment and path queries | contentdb: \`content_items.body\`, workflowdb: \`workflow_definitions.definition\` |
+| GIN on arrays | Array containment | contentdb: \`content_items.tags\`, mediadb: \`media_assets.tags\` |
+| text_pattern_ops | LIKE prefix queries | contentdb: \`folder_path\`, mediadb: \`folder_path\` |
+| Unique partial | Slug uniqueness excluding soft-deleted | contentdb: \`slug\` unique index |
+| Composite | Multi-column filtering | contentdb: \`(content_type_code, status)\`, \`(tenant_id, content_type_code, site_id, slug)\` |
+
+### Index Maintenance
+
+- All indexes monitored via \`pg_stat_user_indexes\` per database
+- VACUUM ANALYZE scheduled nightly via pg_cron per database
+- Index bloat monitored per database via \`pgstattuple\`
+- \`CREATE INDEX CONCURRENTLY\` used for all production index additions to avoid table locks
+
+---
+
+## 14. Row-Level Security & Tenant Validation
+
+### 14.1 RLS Remains Per-Database
+
+PostgreSQL RLS policies are configured in each database individually. The mechanism is identical to the prior design — application sets session variables before every query:
+
+\`\`\`sql
+SET app.current_tenant_id = '<uuid>';
+SET app.current_user_id = '<uuid>';
+SET app.user_role = 'AUTHOR';
+\`\`\`
+
+Example policy (contentdb):
+
+\`\`\`sql
+ALTER TABLE content.content_items ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY tenant_isolation ON content.content_items
+    TO cms_content_app_role
+    USING (tenant_id = current_setting('app.current_tenant_id')::UUID);
+\`\`\`
+
+Each of the 6 PostgreSQL producer databases (iamdb, schemadb, contentdb, workflowdb, mediadb, formdb) has its own application role and its own RLS policies.
+
+### 14.2 Tenant Validation Without Cross-DB FK
+
+> [!IMPORTANT]
+> **Tenant existence and active status can no longer be enforced by a PostgreSQL FK in any database except \`iamdb\`.** This is an architectural consequence of database-per-service.
+
+**New invariant:** Tenant identity and status are verified **once at the API Gateway** via the JWT claim issued by iam-service. The JWT contains:
+
+\`\`\`json
+{
+  "sub": "<user-uuid>",
+  "tenantId": "<tenant-uuid>",
+  "tenantStatus": "ACTIVE",
+  "roles": ["AUTHOR"],
+  "email": "user@acme.com",
+  "exp": 1750000000
+}
+\`\`\`
+
+The API Gateway validates the JWT signature and rejects requests where \`tenantStatus != 'ACTIVE'\` before the request reaches any microservice. Downstream services trust the JWT claim and do not re-validate tenant existence via a DB query.
+
+**What this means in practice:**
+- If a tenant is suspended in \`iamdb.tenants\`, iam-service stops issuing valid JWTs for that tenant and blacklists existing tokens via Redis.
+- All downstream service databases (contentdb, workflowdb, etc.) do not need to know tenant status — they rely on the Gateway having already enforced it.
+- The \`tenant_id\` column in each database is populated from the JWT claim and used for RLS filtering only.
+
+### 14.3 When to Re-Validate Tenant at Application Layer
+
+Batch jobs, scheduled tasks (e.g., the scheduled-publish cron), and Kafka consumers that run outside the request/response cycle must call iam-service to verify tenant status before acting. They do not have a JWT from the API Gateway and must use a service-to-service token.
+
+---
+
+## 15. Migration Strategy — 9 Independent Flyway Histories
+
+### 15.1 One Flyway Project Per Service
+
+Each service contains its own Flyway migration scripts under \`src/main/resources/db/migration/\`. Flyway stores its history in a \`flyway_schema_history\` table inside that service's database. There is no shared migration history.
+
+\`\`\`
+content-service/
+  src/main/resources/db/migration/
+    V1__create_content_schema.sql
+    V2__create_content_items.sql
+    V3__create_content_versions.sql
+    V4__create_outbox_events.sql
+    V5__add_site_id_to_content_items.sql   ← replaces website_location
+    V6__create_content_indexes.sql
+    V7__enable_rls_content_items.sql
+    V8__seed_default_site.sql              ← seed if needed
+
+schema-service/
+  src/main/resources/db/migration/
+    V1__create_schema_schema.sql
+    V2__create_content_types.sql
+    V3__create_field_definitions.sql
+    V4__create_categories.sql
+    V5__create_sites.sql                   ← new
+    V6__create_menus.sql                   ← new
+    V7__create_menu_items.sql              ← new
+    V8__create_outbox_events.sql
+    V9__create_indexes.sql
+
+iam-service/
+  src/main/resources/db/migration/
+    V1__create_iam_schema.sql
+    V2__create_tenants.sql                 ← new
+    V3__create_users.sql
+    V4__create_roles_permissions.sql
+    V5__create_user_roles.sql
+    V6__create_api_keys.sql
+    V7__create_refresh_tokens.sql
+    V8__create_outbox_events.sql
+    V9__create_indexes.sql
+    V10__seed_system_roles.sql
+    V11__seed_default_permissions.sql
+    V12__seed_default_tenant.sql           ← seed default tenant for dev
+... (similar structure for workflowdb, mediadb, formdb, notificationdb, auditdb)
+\`\`\`
+
+### 15.2 Migration Rules (Unchanged)
+
+1. Never modify an existing migration. Only add new ones.
+2. Backward-compatible only: new column = nullable or with DEFAULT. Never drop a column in the same sprint it was added.
+3. Rename in 3 steps across sprints.
+4. Large data migrations run as background jobs, not inside Flyway scripts.
+5. Index creation uses \`CREATE INDEX CONCURRENTLY\` in repair scripts to avoid table locks.
+
+---
+
+## 16. Key Query Patterns
+
+> [!WARNING]
+> No query pattern in this system may JOIN across databases. Any pattern that previously did so is rewritten below as **API composition** or **denormalized field access**.
+
+### 16.1 List Content by Type + Status (Admin — most common)
+
+\`\`\`sql
+-- contentdb only — no cross-DB join needed
+SELECT id, title, slug, status, category_id, category_code,
+       site_id, site_code, published_at, created_by, created_at
+FROM content.content_items
+WHERE content_type_code = 'tender_notice'
+  AND tenant_id = :tenantId
+  AND status IN ('DRAFT', 'IN_REVIEW')
+  AND deleted_at IS NULL
+ORDER BY created_at DESC
+LIMIT 20 OFFSET 0;
+-- Uses: idx_content_type_status composite index
+-- category_code and site_code are denormalized — no JOIN to schemadb needed
+\`\`\`
+
+### 16.2 Full-Text Search (via search-service / OpenSearch)
+
+\`\`\`
+// This is an OpenSearch query — NOT a SQL query
+// search-service executes against searchstore (OpenSearch), never against contentdb SQL
+
+POST /cms-content-{tenantCode}/_search
+{
+  "query": {
+    "bool": {
+      "must": [
+        { "multi_match": { "query": "bridge construction", "fields": ["title^3", "body_text"] } }
+      ],
+      "filter": [
+        { "term": { "status": "PUBLISHED" } },
+        { "term": { "site_code": "main-site" } }
+      ]
+    }
+  },
+  "aggs": {
+    "by_type": { "terms": { "field": "content_type_code" } },
+    "by_category": { "terms": { "field": "category_code" } }
+  }
+}
+\`\`\`
+
+**After a search hit:** The UI receives a list of \`{ id, title, slug, content_type_code, ... }\` from search-service. If full content body is needed, the UI makes a separate \`GET /api/v1/content/{type}/{id}\` call to content-service. Search never joins back to contentdb.
+
+### 16.3 JSONB Field Query — Tenders Above a Value (contentdb only)
+
+\`\`\`sql
+SELECT id, title, (body->>'tender_value')::numeric AS tender_value
+FROM content.content_items
+WHERE content_type_code = 'tender_notice'
+  AND tenant_id = :tenantId
+  AND site_code = :siteCode
+  AND status = 'PUBLISHED'
+  AND deleted_at IS NULL
+  AND (body->>'tender_value')::numeric > 1000000
+ORDER BY (body->>'bid_submission_end')::timestamptz DESC;
+-- Uses: idx_content_body GIN for containment; site_code filters on idx_content_site_code
+\`\`\`
+
+### 16.4 Scheduled Publish Cron (contentdb — every minute)
+
+\`\`\`sql
+UPDATE content.content_items
+SET status = 'PUBLISHED', published_at = NOW(), updated_at = NOW()
+WHERE status = 'SCHEDULED'
+  AND publish_at <= NOW()
+  AND deleted_at IS NULL;
+-- Uses: idx_content_publish_at partial index (covers SCHEDULED rows only)
+-- Post-update: insert rows into content.outbox_events for Debezium → cms.content.published Kafka event
+\`\`\`
+
+### 16.5 Workflow History for a Content Item (API composition)
+
+\`\`\`
+// NOT a SQL join across contentdb + workflowdb
+// Client calls two APIs:
+1. GET /api/v1/content/tender_notice/{id}
+   → content-service returns content item (includes workflow_instance_id from contentdb)
+
+2. GET /api/v1/workflow-instances/{workflow_instance_id}/history
+   → workflow-service queries workflowdb.workflow.workflow_history
+   → returns transition history
+\`\`\`
+
+### 16.6 Audit Log for an Entity (auditdb only)
+
+\`\`\`sql
+SELECT event_type, actor_email, source_service, old_value, new_value, occurred_at, correlation_id
+FROM audit.audit_events
+WHERE entity_type = 'content_item'
+  AND entity_id = :contentItemId
+  AND tenant_id = :tenantId
+ORDER BY occurred_at DESC
+LIMIT 50;
+-- Uses: idx_audit_entity + partition pruning (if date filter added)
+-- All fields are denormalized — no join to contentdb, iamdb, or workflowdb
+\`\`\`
+
+### 16.7 Menu Retrieval for a Site (schemadb + Redis cache)
+
+\`\`\`sql
+-- schemadb only (all tables in same DB — real FKs used)
+SELECT mi.id, mi.label, mi.link_type, mi.content_item_id,
+       mi.external_url, mi.category_id, mi.display_order
+FROM schema.menu_items mi
+JOIN schema.menus m ON m.id = mi.menu_id
+JOIN schema.sites s ON s.id = m.site_id
+WHERE s.code = :siteCode
+  AND m.location = :location
+  AND s.tenant_id = :tenantId
+  AND mi.is_active = true
+ORDER BY mi.display_order;
+-- Redis cache key: menu:{siteCode}:{location}   TTL: 15 min
+-- Evicted on: cms.schema.changed event (menu updated)
+\`\`\`
+
+---
+
+## 17. ERD Summary — Per-Database Mini-ERDs
+
+### 17.1 Logical Database Topology
+
+\`\`\`
+┌─────────────────────────────────────────────────────────────────┐
+│              DATABASE TOPOLOGY — LOGICAL REFERENCES             │
+│           Solid line = real FK   Dashed line = logical ref      │
+└─────────────────────────────────────────────────────────────────┘
+
+         ┌──────────────────┐
+         │     iamdb        │
+         │ tenants          │◄─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┐
+         │ users            │◄ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┐    │
+         │ roles            │                               :    :
+         │ permissions      │                               :    :
+         │ user_roles       │                               :    :
+         │ api_keys         │                               :    :
+         │ refresh_tokens   │                               :    :
+         └──────────────────┘                               :    :
+                                                            :    :
+         ┌──────────────────┐                               :    :
+         │   schemadb       │◄ ─ (tenant_id)─ ─ ─ ─ ─ ─ ─ ┘    :
+         │ content_types  ──┼──► workflow_id ─ ─ ► workflowdb   :
+         │ field_definitions│                                     :
+         │ categories       │                                     :
+         │ sites          ──┼──► tenant_id ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┘
+         │ menus            │                         (iamdb)
+         │ menu_items     ──┼──► content_item_id ─ ─ ► contentdb
+         └──────────────────┘
+                  ▲
+                  : (content_type_id, category_id, site_id)
+         ┌────────┴─────────┐
+         │   contentdb      │
+         │ content_items    │◄──────────────┐ (self-ref parent_id)
+         │ content_versions │               │
+         └──────────────────┘               │
+                  │                         │
+                  : workflow_instance_id     │
+                  ▼                         │
+         ┌──────────────────┐               │
+         │   workflowdb     │               │
+         │ workflow_defs    │               │
+         │ workflow_inst  ──┼──► entity_id──┘ (polymorphic, no FK)
+         │ workflow_history │
+         └──────────────────┘
+
+         ┌──────────────────┐   ┌──────────────────┐
+         │   mediadb        │   │   formdb          │
+         │ media_assets     │   │ form_definitions  │
+         └──────────────────┘   │ form_submissions  │
+                                └──────────────────┘
+
+         ┌──────────────────┐   ┌──────────────────┐
+         │  notificationdb  │   │   auditdb         │
+         │ notif_templates  │   │ audit_events      │
+         │ notification_log │   │ (partitioned)     │
+         └──────────────────┘   └──────────────────┘
+
+         ┌──────────────────┐
+         │  searchstore     │
+         │ (OpenSearch)     │
+         │ cms-content-*    │
+         │ (denormalized)   │
+         └──────────────────┘
+\`\`\`
+
+### 17.2 iamdb Internal ERD
+
+\`\`\`
+tenants ──────────────────────────────┐
+    │ (real FK)                        │ (real FK)
+    ▼                                  ▼
+users ──── user_roles ──── roles ──── role_permissions ──── permissions
+    │
+    └── refresh_tokens
+    └── api_keys
+    └── outbox_events
+\`\`\`
+
+### 17.3 schemadb Internal ERD
+
+\`\`\`
+sites ──────────────── menus ──────────────── menu_items
+  │                                               │
+  └── (tenant_id: logical ref to iamdb)          └── category_id (real FK → categories)
+                                                  └── content_item_id (logical ref to contentdb)
+
+content_types ──── field_definitions
+      │
+      └── categories (tree: parent_id self-ref)
+      └── (workflow_id: logical ref to workflowdb)
+
+outbox_events
+\`\`\`
+
+### 17.4 contentdb Internal ERD
+
+\`\`\`
+content_items (self-ref: parent_id)
+    └── content_versions
+    └── outbox_events
+
+content_items
+  .content_type_id  → logical ref to schemadb.content_types
+  .category_id      → logical ref to schemadb.categories
+  .site_id          → logical ref to schemadb.sites
+  .site_code        → denormalized
+  .created_by       → logical ref to iamdb.users
+  .workflow_instance_id → logical ref to workflowdb.workflow_instances
+\`\`\`
+
+### 17.5 workflowdb Internal ERD
+
+\`\`\`
+workflow_definitions ──── workflow_instances ──── workflow_history
+                              │
+                              └── entity_id (polymorphic logical ref)
+                              └── actor_id (logical ref to iamdb.users)
+\`\`\`
+
+---
+
+## 18. Operational Tradeoffs
+
+Moving to database-per-service introduces real operational complexity. This section documents it honestly alongside the mitigations.
+
+| Tradeoff | Impact | Mitigation |
+|AAAAAAAAAA|AAAAA---|AAAAAAAAAA--|
+| **9x backup surfaces** | Each database needs its own backup schedule, retention policy, and restore test | Use the same PostgreSQL version and \`pg_basebackup\` / pgBackRest config across all 7 PG instances. Kubernetes CronJob runs backup for each. One playbook covers all. |
+| **9x HA setup** | Each PG instance needs a replica for availability | Use a PostgreSQL operator (CloudNativePG or Zalando Postgres Operator) — one Helm chart parameterizes all 7 instances identically |
+| **9x monitoring** | Each database has its own \`pg_stat_*\` views, slow query logs, connection pools | Centralize via \`postgres_exporter\` per instance + single Grafana dashboard with datasource selector |
+| **9x PgBouncer** | Each service needs its own connection pool | Deploy PgBouncer as a sidecar per service pod — standard Helm chart, same config |
+| **9 independent Flyway histories** | Migration failures in one service don't block others; but coordinating cross-DB data migrations (e.g. legacy → new) requires a separate migration orchestrator | Wrap legacy migration in a one-shot Kubernetes Job that calls each service's migration API endpoint in dependency order |
+| **No cross-DB SQL joins** | Queries that previously joined across schemas now require API composition or denormalized fields | Denormalize aggressively (site_code, category_code, content_type_code, actor_email). Use local read-model caches for frequent lookups. Accept eventual consistency for non-critical cross-service data. |
+| **Eventual consistency** | A content item references a category that may not yet exist in contentdb's local cache | Apply Kafka consumer idempotency + retry: if a referenced entity is not found in local cache, wait for the Kafka event that syncs it, then retry |
+| **No cross-DB transactions** | Creating a content item + starting a workflow instance cannot be in one atomic DB transaction | Use the Saga pattern: content-service creates the item (local transaction), emits \`cms.content.created\`, workflow-service listens and starts the instance. Compensating events handle failures. |
+| **Distributed tracing required** | A user action spans 3–5 services; debugging without traces is painful | OpenTelemetry auto-instrumentation on every Spring Boot service. W3C Trace Context propagated in all HTTP and Kafka message headers. Jaeger/Tempo as backend. |
+`;
+
+// ── TAB SWITCHING ──────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  const idx = ['arch','schema','diagrams'].indexOf(tab);
+  document.querySelectorAll('.tab-btn')[idx].classList.add('active');
+
+  if (tab === 'schema' && !document.getElementById('schema-rendered').innerHTML) {
+    renderSchema();
+  }
+}
+
+function scrollTo(id) {
+  setTimeout(() => {
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 50);
+}
+
+// ── SCHEMA RENDER ──────────────────────────────────────
+function renderSchema() {
+  const el = document.getElementById('schema-rendered');
+  el.innerHTML = marked.parse(schemaSql);
+  el.querySelectorAll('pre code').forEach(block => {
+    hljs.highlightElement(block);
+  });
+}
+
+// ── HLJS SETUP ─────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  hljs.configure({ languages: ['sql', 'java', 'json', 'bash', 'typescript'] });
+  document.querySelectorAll('#tab-arch pre code').forEach(block => {
+    hljs.highlightElement(block);
+  });
+});
+
+// Close sidebar on mobile when clicking a link
+document.querySelectorAll('.nav-link').forEach(link => {
+  link.addEventListener('click', () => {
+    if (window.innerWidth <= 900) {
+      document.getElementById('sidebar').classList.remove('open');
+    }
+  });
+});
+</script>
+</body>
+</html>

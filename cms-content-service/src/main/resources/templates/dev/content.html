@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Content Repository Console — CMS Dev</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg:       #060913;
+            --surface:  #0a0f1d;
+            --card:     rgba(255,255,255,0.035);
+            --card-hov: rgba(255,255,255,0.06);
+            --border:   rgba(255,255,255,0.07);
+            --accent:   #3b82f6; /* Blue for Content */
+            --accent2:  #2563eb;
+            --green:    #10b981;
+            --yellow:   #f59e0b;
+            --red:      #ef4444;
+            --text:     #e2e8f0;
+            --muted:    #4a5468;
+            --mono:     'JetBrains Mono', monospace;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            background-image:
+                radial-gradient(ellipse at 15% 15%, rgba(59,130,246,0.08) 0%, transparent 55%),
+                radial-gradient(ellipse at 85% 85%, rgba(16,185,129,0.04) 0%, transparent 55%);
+        }
+
+        .top-bar {
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            backdrop-filter: blur(10px);
+            position: sticky;
+            top: 0;
+            background: rgba(6,9,19,0.85);
+            z-index: 100;
+        }
+
+        .top-bar a {
+            color: var(--muted);
+            text-decoration: none;
+            font-size: 0.82rem;
+            transition: color 0.2s;
+        }
+        .top-bar a:hover { color: var(--text); }
+        .top-bar .sep { color: var(--muted); }
+        .top-bar .current { color: var(--text); font-weight: 500; }
+
+        .service-badge {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--accent);
+        }
+        .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: pulse 2s infinite; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .main {
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            min-height: calc(100vh - 57px);
+        }
+
+        .left-panel {
+            border-right: 1px solid var(--border);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+            overflow-y: auto;
+        }
+
+        .right-panel {
+            padding: 1.5rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .section-title {
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--muted);
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 0.75rem;
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            transition: all 0.2s;
+        }
+        .card-head {
+            padding: 0.8rem 1rem;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.82rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .card-body { padding: 1rem; }
+
+        .field { margin-bottom: 0.85rem; }
+        .field:last-child { margin-bottom: 0; }
+
+        label {
+            display: block;
+            font-size: 0.72rem;
+            font-weight: 500;
+            color: var(--muted);
+            margin-bottom: 0.35rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 0.55rem 0.8rem;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            color: var(--text);
+            font-size: 0.85rem;
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        input:focus, select:focus, textarea:focus {
+            border-color: rgba(59,130,246,0.5);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 0.6rem 1rem;
+            border: none;
+            border-radius: 7px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+            box-shadow: 0 4px 12px rgba(59,130,246,0.25);
+        }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(59,130,246,0.35); }
+        .btn-secondary {
+            background: rgba(255,255,255,0.05);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+        .btn-secondary:hover { background: rgba(255,255,255,0.09); }
+        .btn-danger {
+            background: rgba(239,68,68,0.12);
+            color: var(--red);
+            border: 1px solid rgba(239,68,68,0.2);
+        }
+
+        .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+
+        /* Dynamic payload inputs */
+        .payload-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+            margin-bottom: 0.85rem;
+            border: 1px dashed var(--border);
+            padding: 0.75rem;
+            border-radius: 8px;
+            background: rgba(0,0,0,0.1);
+        }
+        .payload-row {
+            display: grid;
+            grid-template-columns: 1fr 1.5fr 30px;
+            gap: 0.4rem;
+            align-items: center;
+        }
+        .btn-remove-row {
+            background: none;
+            border: none;
+            color: var(--red);
+            font-size: 1.1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* List Items */
+        .item-list { display: flex; flex-direction: column; gap: 0.5rem; }
+        .list-item {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.65rem 0.85rem;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.15s;
+        }
+        .list-item:hover { background: var(--card-hov); border-color: rgba(255,255,255,0.12); }
+        .list-item.selected { border-color: var(--accent); background: rgba(59,130,246,0.05); }
+
+        .item-meta { font-family: var(--mono); font-size: 0.73rem; color: var(--muted); }
+
+        /* Timeline Version Logs */
+        .timeline {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            position: relative;
+            padding-left: 1.5rem;
+            margin-top: 0.5rem;
+        }
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 5px;
+            top: 5px;
+            bottom: 5px;
+            width: 2px;
+            background: var(--border);
+        }
+        .timeline-node {
+            position: relative;
+        }
+        .timeline-node::before {
+            content: '';
+            position: absolute;
+            left: -22px;
+            top: 4px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--accent);
+            border: 2px solid var(--bg);
+        }
+        .timeline-meta { font-size: 0.72rem; color: var(--muted); font-family: var(--mono); margin-bottom: 0.25rem; }
+        .timeline-body {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.6rem 0.8rem;
+            font-size: 0.82rem;
+        }
+
+        .status-badge {
+            display: inline-block;
+            font-family: var(--mono);
+            font-size: 0.68rem;
+            font-weight: 600;
+            padding: 0.2em 0.5em;
+            border-radius: 4px;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid var(--border);
+        }
+        .sb-draft { color: var(--muted); }
+        .sb-published { background: rgba(16,185,129,0.15); color: var(--green); border-color: rgba(16,185,129,0.3); }
+        .sb-review { background: rgba(245,158,11,0.15); color: var(--yellow); border-color: rgba(245,158,11,0.3); }
+
+        /* Request Log */
+        .log-box {
+            font-family: var(--mono);
+            font-size: 0.72rem;
+            background: rgba(0,0,0,0.35);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.75rem;
+            max-height: 180px;
+            overflow-y: auto;
+            color: #94a3b8;
+        }
+        .log-entry { margin-bottom: 0.15rem; display: flex; gap: 0.6rem; }
+        .log-time { color: var(--muted); }
+        .log-ok { color: var(--green); }
+        .log-err { color: var(--red); }
+        .log-info { color: var(--accent); }
+
+        .json-box {
+            font-family: var(--mono);
+            font-size: 0.75rem;
+            background: rgba(0,0,0,0.4);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.85rem;
+            max-height: 280px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            color: #94a3b8;
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.25rem 0.6rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .s-ok { background: rgba(16,185,129,0.1); color: #10b981; }
+        .s-warn { background: rgba(245,158,11,0.1); color: #fbbf24; }
+        .s-err { background: rgba(239,68,68,0.1); color: #f87171; }
+        .s-none { background: rgba(100,116,139,0.1); color: var(--muted); }
+
+        .token-input-card {
+            background: rgba(59,130,246,0.02);
+            border: 1px solid rgba(59,130,246,0.15);
+        }
+
+        .divider { height: 1px; background: var(--border); margin: 0.75rem 0; }
+        .placeholder { text-align: center; padding: 2rem; color: var(--muted); font-size: 0.82rem; }
+        .placeholder .icon { font-size: 1.8rem; margin-bottom: 0.4rem; }
+    </style>
+</head>
+<body>
+
+<div class="top-bar">
+    <a href="/dev">Dev Console</a>
+    <span class="sep">/</span>
+    <span class="current">Content Service — Repository Console</span>
+    <div class="service-badge">
+        <div class="dot"></div>
+        :8083
+    </div>
+</div>
+
+<div class="main">
+
+    <!-- ═══════════════════════════════════════════════════════════ LEFT PANEL -->
+    <div class="left-panel">
+
+        <!-- Token Paste & Tenant Setup -->
+        <p class="section-title">Credentials</p>
+        <div class="card token-input-card">
+            <div class="card-body">
+                <div class="field">
+                    <label>Auth JWT Token (from login)</label>
+                    <input id="token-val" placeholder="eyJhbGciOiJSUzI1Ni..." oninput="parseToken()"/>
+                </div>
+                <div class="field">
+                    <label>Tenant ID (X-Tenant-Id)</label>
+                    <input id="tenant-id" placeholder="UUID format"/>
+                </div>
+                <div class="field">
+                    <label>User ID (X-User-Id)</label>
+                    <input id="user-id" placeholder="UUID format"/>
+                </div>
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Content Items List -->
+        <p class="section-title" style="display:flex;justify-content:space-between;align-items:center;">
+            <span>Content Repository</span>
+            <button class="btn" style="width:auto;font-size:0.7rem;padding:0.15rem 0.4rem;" onclick="loadContentItems()">Refresh</button>
+        </p>
+        <div id="content-items-list" class="item-list">
+            <div class="placeholder"><p>Enter token to load repository items</p></div>
+        </div>
+
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════ RIGHT PANEL -->
+    <div class="right-panel">
+
+        <!-- Main Schema Creator & Inspector -->
+        <div style="display:grid;grid-template-columns: 1.2fr 1fr; gap: 1rem;">
+
+            <!-- Left column: Creator / Editor -->
+            <div class="card">
+                <div class="card-head">📝 Create or Update Content Item</div>
+                <div class="card-body">
+                    <div class="field">
+                        <label>Content Title</label>
+                        <input id="c-title" placeholder="e.g. Annual Tender Bid Notice 2026"/>
+                    </div>
+                    <div class="field">
+                        <label>Slug (auto-generated if empty)</label>
+                        <input id="c-slug" placeholder="e.g. annual-tender-bid-2026"/>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.85rem;">
+                        <div>
+                            <label>Content Type Code</label>
+                            <input id="c-type-code" value="article"/>
+                        </div>
+                        <div>
+                            <label>Workflow Code</label>
+                            <input id="c-workflow-code" value="default_publishing"/>
+                        </div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:0.5rem;margin-bottom:0.85rem;">
+                        <div>
+                            <label>Site ID</label>
+                            <input id="c-site-id" placeholder="UUID (Site ID)"/>
+                        </div>
+                        <div>
+                            <label>Site Code</label>
+                            <input id="c-site-code" value="main-site"/>
+                        </div>
+                    </div>
+
+                    <div class="divider"></div>
+                    <p style="font-size:0.75rem;font-weight:600;margin-bottom:0.5rem;color:var(--accent);">Payload Properties (JSONB Body)</p>
+
+                    <div id="payload-fields-list" class="payload-container">
+                        <!-- Dynamic fields rows go here -->
+                    </div>
+
+                    <button class="btn btn-secondary" onclick="addPayloadRow()" style="margin-bottom:0.85rem;">+ Add Property Row</button>
+
+                    <div id="editor-edit-controls" style="display:none;margin-top:0.5rem;">
+                        <div class="divider"></div>
+                        <div class="field">
+                            <label>Change Summary (Revision Details)</label>
+                            <input id="c-change-summary" placeholder="e.g. Updated title and corrected typos."/>
+                        </div>
+                    </div>
+
+                    <div class="divider"></div>
+                    <div class="btn-row">
+                        <button id="btn-submit" class="btn btn-primary" onclick="submitContent()">Create Content</button>
+                        <button id="btn-cancel" class="btn btn-secondary" onclick="resetEditor()" style="display:none;">Cancel Edit</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right column: Inspector & Version log -->
+            <div style="display:flex;flex-direction:column;gap:1rem;">
+                <!-- Inspector -->
+                <div class="card">
+                    <div class="card-head">
+                        <span>Content Inspector</span>
+                        <div id="res-status" class="status-pill s-none">—</div>
+                    </div>
+                    <div class="card-body">
+                        <div id="content-details" style="display:none;">
+                            <div style="margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center;">
+                                <div>
+                                    <div style="font-size:0.72rem;color:var(--muted);text-transform:uppercase;">Workflow Status</div>
+                                    <div id="curr-status-badge" class="status-badge sb-draft">DRAFT</div>
+                                </div>
+                                <div style="text-align:right;">
+                                    <div style="font-size:0.72rem;color:var(--muted);text-transform:uppercase;">Active Version</div>
+                                    <div id="curr-version-lbl" class="item-meta">v1</div>
+                                </div>
+                            </div>
+                            <div class="field">
+                                <label>JSON Payload Body</label>
+                                <div id="json-body-viewer" class="json-box">{}</div>
+                            </div>
+                            <div class="btn-row" style="margin-top:0.85rem;">
+                                <button class="btn btn-secondary" onclick="editCurrentItem()">Edit Revision</button>
+                                <button class="btn btn-danger" onclick="deleteCurrentItem()">Delete Item</button>
+                            </div>
+                        </div>
+
+                        <div id="inspector-placeholder" class="placeholder">
+                            <div class="icon">🔍</div>
+                            <p>Select a content item from the left panel to inspect its configuration and versions.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Version Log -->
+                <div class="card" style="flex:1;">
+                    <div class="card-head">📋 Content Revision History (Immutable Versions)</div>
+                    <div class="card-body" style="max-height: 250px; overflow-y: auto;">
+                        <div id="versions-timeline" class="timeline">
+                            <div style="color:var(--muted);text-align:center;font-size:0.8rem;">Select an item to view revision snapshots</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Request Log -->
+        <div>
+            <p class="section-title">Request Log</p>
+            <div id="log-box" class="log-box">
+                <div class="log-entry"><span class="log-time">--:--:--</span><span class="log-info">Console initialized. Schema and Workflow services must be running downstream.</span></div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+let selectedItemId = null;
+let isEditMode = false;
+
+// ── Log ────────────────────────────────────────────────────────────────────
+function log(msg, type='info') {
+    const box = document.getElementById('log-box');
+    const ts = new Date().toLocaleTimeString('en-GB', {hour12: false});
+    const entry = document.createElement('div');
+    entry.className = 'log-entry';
+    entry.innerHTML = `<span class="log-time">${ts}</span><span class="log-${type}">${msg}</span>`;
+    box.appendChild(entry);
+    box.scrollTop = box.scrollHeight;
+}
+
+// ── JWT Parser ─────────────────────────────────────────────────────────────
+function decodeJwt(t) {
+    try {
+        const p = t.split('.')[1];
+        return JSON.parse(atob(p.replace(/-/g,'+').replace(/_/g,'/')));
+    } catch(e) { return null; }
+}
+
+function parseToken() {
+    const token = document.getElementById('token-val').value.trim();
+    if (!token) return;
+
+    const payload = decodeJwt(token);
+    if (payload) {
+        log(`✓ Token parsed — issued for ${payload.email} (${payload.tenantCode})`, 'ok');
+        if (payload.tenantId) document.getElementById('tenant-id').value = payload.tenantId;
+        if (payload.userId) document.getElementById('user-id').value = payload.userId;
+        loadContentItems();
+    } else {
+        log('✗ Invalid token format', 'err');
+    }
+}
+
+// Initialize
+window.onload = function() {
+    const savedToken = localStorage.getItem('accessToken') || '';
+    if (savedToken) {
+        document.getElementById('token-val').value = savedToken;
+        parseToken();
+    }
+    generateMockSiteId();
+    addPayloadRow('title', 'Annual Tender Notice 2026'); // Seed title property
+}
+
+function generateMockSiteId() {
+    // Generate UUIDv4 for mock site
+    const uuid = ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+        (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+    );
+    document.getElementById('c-site-id').value = uuid;
+}
+
+function showStatus(code) {
+    const el = document.getElementById('res-status');
+    el.textContent = code;
+    el.className = 'status-pill ' + (code >= 200 && code < 300 ? 's-ok' : 's-err');
+}
+
+// ── Headers ────────────────────────────────────────────────────────────────
+function getHeaders() {
+    const token = document.getElementById('token-val').value.trim();
+    const tenantId = document.getElementById('tenant-id').value.trim();
+    const userId = document.getElementById('user-id').value.trim();
+
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    if (tenantId) headers['X-Tenant-Id'] = tenantId;
+    if (userId) headers['X-User-Id'] = userId;
+    return headers;
+}
+
+// ── UI Helpers ─────────────────────────────────────────────────────────────
+function addPayloadRow(key='', value='') {
+    const cont = document.getElementById('payload-fields-list');
+    const row = document.createElement('div');
+    row.className = 'payload-row';
+    row.innerHTML = `
+        <input class="p-key" placeholder="property key" value="${key}"/>
+        <input class="p-val" placeholder="property value" value="${value}"/>
+        <button class="btn-remove-row" onclick="this.parentElement.remove()">×</button>
+    `;
+    cont.appendChild(row);
+}
+
+function getPayloadBody() {
+    const body = {};
+    document.querySelectorAll('.payload-row').forEach(row => {
+        const key = row.querySelector('.p-key').value.trim();
+        const value = row.querySelector('.p-val').value.trim();
+        if (key) {
+            // Attempt to parse simple values as booleans or numbers
+            if (value.toLowerCase() === 'true') body[key] = true;
+            else if (value.toLowerCase() === 'false') body[key] = false;
+            else if (!isNaN(value) && value !== '') body[key] = Number(value);
+            else body[key] = value;
+        }
+    });
+    return body;
+}
+
+// ── CRUD Operations ────────────────────────────────────────────────────────
+async function loadContentItems() {
+    const headers = getHeaders();
+    if (!headers['X-Tenant-Id']) {
+        log('Tenant ID is required to fetch repository items', 'err');
+        return;
+    }
+
+    log('GET /api/v1/content', 'info');
+    try {
+        const res = await fetch('/api/v1/content', { headers });
+        const data = await res.json();
+        showStatus(res.status);
+
+        if (res.ok && data.success) {
+            const list = data.data;
+            const container = document.getElementById('content-items-list');
+            if (list.length === 0) {
+                container.innerHTML = '<div class="placeholder"><p>No items in repository</p></div>';
+            } else {
+                container.innerHTML = list.map(item => `
+                    <div class="list-item" id="item-${item.id}" onclick="selectContentItem('${item.id}')">
+                        <div>
+                            <div style="font-weight:600;font-size:0.85rem;">${item.title}</div>
+                            <div class="item-meta">${item.contentTypeCode} &middot; v${item.currentVersion} &middot; ${item.siteCode}</div>
+                        </div>
+                        <div class="status-badge ${item.status === 'PUBLISHED'?'sb-published':item.status==='IN_REVIEW'?'sb-review':'sb-draft'}">
+                            ${item.status}
+                        </div>
+                    </div>
+                `).join('');
+            }
+            log(`Loaded ${list.length} repository items`, 'ok');
+        } else {
+            log(`Failed: ${data.error?.message || res.statusText}`, 'err');
+        }
+    } catch(e) {
+        log(`Network Error: ${e.message}`, 'err');
+    }
+}
+
+async function selectContentItem(id) {
+    selectedItemId = id;
+    document.querySelectorAll('.list-item').forEach(el => el.classList.remove('selected'));
+    document.getElementById(`item-${id}`).classList.add('selected');
+
+    document.getElementById('inspector-placeholder').style.display = 'none';
+    document.getElementById('content-details').style.display = 'block';
+
+    await loadItemDetails(id);
+    await loadVersions(id);
+}
+
+async function loadItemDetails(id) {
+    const headers = getHeaders();
+    log(`GET /api/v1/content/${id}`, 'info');
+
+    try {
+        const res = await fetch(`/api/v1/content/${id}`, { headers });
+        const data = await res.json();
+        showStatus(res.status);
+
+        if (res.ok && data.success) {
+            const item = data.data;
+            document.getElementById('json-body-viewer').textContent = JSON.stringify(item.body, null, 2);
+            document.getElementById('curr-status-badge').textContent = item.status;
+            document.getElementById('curr-status-badge').className = 'status-badge ' + 
+                (item.status === 'PUBLISHED' ? 'sb-published' : item.status === 'IN_REVIEW' ? 'sb-review' : 'sb-draft');
+            document.getElementById('curr-version-lbl').textContent = `v${item.currentVersion}`;
+        } else {
+            log(`Failed details: ${data.error?.message}`, 'err');
+        }
+    } catch(e) {
+        log(`Network Error: ${e.message}`, 'err');
+    }
+}
+
+async function loadVersions(id) {
+    const headers = getHeaders();
+    log(`GET /api/v1/content/${id}/versions`, 'info');
+
+    try {
+        const res = await fetch(`/api/v1/content/${id}/versions`, { headers });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+            const list = data.data;
+            const container = document.getElementById('versions-timeline');
+            if (list.length === 0) {
+                container.innerHTML = '<div style="color:var(--muted);text-align:center;font-size:0.8rem;">No version history</div>';
+            } else {
+                container.innerHTML = list.map(v => `
+                    <div class="timeline-node">
+                        <div class="timeline-meta">
+                            ${new Date(v.createdAt).toLocaleString()} &middot; v${v.versionNumber}
+                        </div>
+                        <div class="timeline-body">
+                            <strong>${v.title}</strong> &middot; <span class="status-badge">${v.status}</span>
+                            <p style="color:var(--text);font-style:italic;margin-top:0.2rem;">"${v.changeSummary || ''}"</p>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+    } catch(e) {
+        log(`Failed versions: ${e.message}`, 'err');
+    }
+}
+
+async function submitContent() {
+    const headers = getHeaders();
+    const title = document.getElementById('c-title').value.trim();
+    const slug = document.getElementById('c-slug').value.trim();
+    const contentTypeCode = document.getElementById('c-type-code').value.trim();
+    const workflowCode = document.getElementById('c-workflow-code').value.trim();
+    const siteId = document.getElementById('c-site-id').value.trim();
+    const siteCode = document.getElementById('c-site-code').value.trim();
+
+    if (!title || !contentTypeCode || !siteId || !siteCode) {
+        log('Title, Content Type, Site ID, and Site Code are required', 'err');
+        return;
+    }
+
+    const payload = {
+        title, slug, contentTypeCode, workflowCode, siteId, siteCode,
+        body: getPayloadBody()
+    };
+
+    if (isEditMode) {
+        payload.changeSummary = document.getElementById('c-change-summary').value.trim();
+        log(`PUT /api/v1/content/${selectedItemId}`, 'info');
+        try {
+            const res = await fetch(`/api/v1/content/${selectedItemId}`, {
+                method: 'PUT',
+                headers,
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            showStatus(res.status);
+
+            if (res.ok && data.success) {
+                log(`✓ Content item updated successfully to version v${data.data.currentVersion}`, 'ok');
+                resetEditor();
+                selectContentItem(selectedItemId);
+                loadContentItems();
+            } else {
+                log(`✗ ${data.error?.code}: ${data.error?.message}`, 'err');
+            }
+        } catch(e) { log(`Network Error: ${e.message}`, 'err'); }
+    } else {
+        log('POST /api/v1/content', 'info');
+        try {
+            const res = await fetch('/api/v1/content', {
+                method: 'POST',
+                headers,
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            showStatus(res.status);
+
+            if (res.ok && data.success) {
+                log(`✓ Content item created successfully`, 'ok');
+                resetEditor();
+                selectContentItem(data.data.id);
+                loadContentItems();
+            } else {
+                log(`✗ ${data.error?.code}: ${data.error?.message}`, 'err');
+            }
+        } catch(e) { log(`Network Error: ${e.message}`, 'err'); }
+    }
+}
+
+async function editCurrentItem() {
+    if (!selectedItemId) return;
+    const headers = getHeaders();
+
+    try {
+        const res = await fetch(`/api/v1/content/${selectedItemId}`, { headers });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+            const item = data.data;
+            isEditMode = true;
+
+            // Load values to inputs
+            document.getElementById('c-title').value = item.title;
+            document.getElementById('c-slug').value = item.slug || '';
+            document.getElementById('c-type-code').value = item.contentTypeCode;
+            document.getElementById('c-site-id').value = item.siteId;
+            document.getElementById('c-site-code').value = item.siteCode;
+
+            // Load dynamic body properties
+            const cont = document.getElementById('payload-fields-list');
+            cont.innerHTML = '';
+            for (const [k, v] of Object.entries(item.body)) {
+                addPayloadRow(k, v);
+            }
+
+            // Show edit fields
+            document.getElementById('editor-edit-controls').style.display = 'block';
+            document.getElementById('btn-submit').textContent = 'Save Changes';
+            document.getElementById('btn-cancel').style.display = 'inline-flex';
+        }
+    } catch(e) { log('Edit fetch failed: ' + e.message, 'err'); }
+}
+
+async function deleteCurrentItem() {
+    if (!selectedItemId) return;
+    if (!confirm('Are you sure you want to delete this content item?')) return;
+
+    const headers = getHeaders();
+    log(`DELETE /api/v1/content/${selectedItemId}`, 'info');
+
+    try {
+        const res = await fetch(`/api/v1/content/${selectedItemId}`, { method: 'DELETE', headers });
+        const data = await res.json();
+        showStatus(res.status);
+
+        if (res.ok && data.success) {
+            log('✓ Content item soft-deleted successfully', 'ok');
+            document.getElementById('content-details').style.display = 'none';
+            document.getElementById('inspector-placeholder').style.display = 'block';
+            selectedItemId = null;
+            loadContentItems();
+        } else {
+            log(`✗ ${data.error?.code}: ${data.error?.message}`, 'err');
+        }
+    } catch(e) { log('Delete failed: ' + e.message, 'err'); }
+}
+
+function resetEditor() {
+    isEditMode = false;
+    document.getElementById('c-title').value = '';
+    document.getElementById('c-slug').value = '';
+    document.getElementById('c-type-code').value = 'article';
+    document.getElementById('c-workflow-code').value = 'default_publishing';
+    generateMockSiteId();
+
+    document.getElementById('payload-fields-list').innerHTML = '';
+    addPayloadRow('title', 'Annual Tender Notice 2026');
+
+    document.getElementById('editor-edit-controls').style.display = 'none';
+    document.getElementById('c-change-summary').value = '';
+    document.getElementById('btn-submit').textContent = 'Create Content';
+    document.getElementById('btn-cancel').style.display = 'none';
+}
+</script>
+</body>
+</html>

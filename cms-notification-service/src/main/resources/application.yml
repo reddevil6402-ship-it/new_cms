@@ -1,0 +1,46 @@
+server:
+  port: 8086
+  servlet:
+    context-path: /
+
+spring:
+  application:
+    name: cms-notification-service
+  
+  datasource:
+    url: jdbc:postgresql://localhost:5439/notificationdb?options=-c%20timezone=UTC
+    username: cms_notification
+    password: localpassword
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      pool-name: NotificationHikariPool
+      maximum-pool-size: 10
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: http://localhost:8081/api/v1/auth/.well-known/jwks.json
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always

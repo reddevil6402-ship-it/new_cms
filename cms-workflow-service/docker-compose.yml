@@ -1,0 +1,22 @@
+version: "3.9"
+
+services:
+  workflowdb:
+    image: postgres:16-alpine
+    container_name: cms_workflowdb
+    environment:
+      POSTGRES_DB: workflowdb
+      POSTGRES_USER: cms_workflow
+      POSTGRES_PASSWORD: localpassword
+    ports:
+      - "5436:5432"       # host 5436 → container 5432
+    volumes:
+      - workflowdb_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cms_workflow -d workflowdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  workflowdb_data:

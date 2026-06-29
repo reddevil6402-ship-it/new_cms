@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>IAM Auth Tester — CMS Dev</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg:       #080d18;
+            --surface:  #0f1729;
+            --card:     rgba(255,255,255,0.035);
+            --card-hov: rgba(255,255,255,0.06);
+            --border:   rgba(255,255,255,0.07);
+            --accent:   #6366f1;
+            --accent2:  #818cf8;
+            --green:    #10b981;
+            --yellow:   #f59e0b;
+            --red:      #ef4444;
+            --blue:     #3b82f6;
+            --text:     #e2e8f0;
+            --muted:    #475569;
+            --mono:     'JetBrains Mono', monospace;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 0;
+            background-image:
+                radial-gradient(ellipse at 10% 10%, rgba(99,102,241,0.1) 0%, transparent 50%),
+                radial-gradient(ellipse at 90% 90%, rgba(139,92,246,0.07) 0%, transparent 50%);
+        }
+
+        /* ── Layout ── */
+        .top-bar {
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            backdrop-filter: blur(10px);
+            position: sticky;
+            top: 0;
+            background: rgba(8,13,24,0.85);
+            z-index: 100;
+        }
+
+        .top-bar a {
+            color: var(--muted);
+            text-decoration: none;
+            font-size: 0.82rem;
+            transition: color 0.2s;
+        }
+        .top-bar a:hover { color: var(--text); }
+
+        .top-bar .sep { color: var(--muted); }
+        .top-bar .current { color: var(--text); font-weight: 500; }
+
+        .service-badge {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--green);
+        }
+
+        .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .main { display: grid; grid-template-columns: 380px 1fr; gap: 0; min-height: calc(100vh - 57px); }
+
+        /* ── Left Panel ── */
+        .left-panel {
+            border-right: 1px solid var(--border);
+            padding: 1.75rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            overflow-y: auto;
+        }
+
+        .panel-title {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--muted);
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        /* ── Card ── */
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .card-head {
+            padding: 0.9rem 1.1rem;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.82rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .card-body { padding: 1.1rem; }
+
+        /* ── Form Elements ── */
+        .field { margin-bottom: 1rem; }
+        .field:last-child { margin-bottom: 0; }
+
+        label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--muted);
+            margin-bottom: 0.4rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        input {
+            width: 100%;
+            padding: 0.6rem 0.85rem;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 0.88rem;
+            font-family: inherit;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            outline: none;
+        }
+
+        input:focus {
+            border-color: rgba(99,102,241,0.5);
+            box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+        }
+
+        /* ── Buttons ── */
+        .btn {
+            width: 100%;
+            padding: 0.65rem 1rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white;
+            box-shadow: 0 4px 15px rgba(99,102,241,0.3);
+        }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(99,102,241,0.4); }
+        .btn-primary:active { transform: translateY(0); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        .btn-secondary {
+            background: rgba(255,255,255,0.06);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+        .btn-secondary:hover { background: rgba(255,255,255,0.1); }
+        .btn-secondary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .btn-danger {
+            background: rgba(239,68,68,0.12);
+            color: var(--red);
+            border: 1px solid rgba(239,68,68,0.2);
+        }
+        .btn-danger:hover { background: rgba(239,68,68,0.2); }
+        .btn-danger:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+
+        /* ── Status Badge ── */
+        .status-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.55rem 0.85rem;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+
+        .status-ok    { background: rgba(16,185,129,0.1);  color: #10b981; border: 1px solid rgba(16,185,129,0.2); }
+        .status-warn  { background: rgba(245,158,11,0.1);  color: #f59e0b; border: 1px solid rgba(245,158,11,0.2); }
+        .status-error { background: rgba(239,68,68,0.1);   color: #ef4444; border: 1px solid rgba(239,68,68,0.2); }
+        .status-none  { background: rgba(100,116,139,0.08); color: var(--muted); border: 1px solid var(--border); }
+
+        /* ── Right Panel ── */
+        .right-panel { padding: 1.75rem; overflow-y: auto; display: flex; flex-direction: column; gap: 1.5rem; }
+
+        /* ── JWT Inspector ── */
+        .jwt-section { display: flex; flex-direction: column; gap: 1rem; }
+
+        .jwt-raw {
+            font-family: var(--mono);
+            font-size: 0.73rem;
+            padding: 0.85rem;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            word-break: break-all;
+            line-height: 1.6;
+            color: #94a3b8;
+            max-height: 80px;
+            overflow-y: auto;
+        }
+
+        .jwt-part-header { color: #f472b6; }
+        .jwt-part-payload { color: #818cf8; }
+        .jwt-part-sig { color: #34d399; }
+
+        /* ── Claims Grid ── */
+        .claims-grid { display: flex; flex-direction: column; gap: 0.5rem; }
+
+        .claim-row {
+            display: grid;
+            grid-template-columns: 130px 1fr;
+            gap: 0.5rem;
+            align-items: start;
+            padding: 0.5rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.82rem;
+            transition: background 0.15s;
+        }
+
+        .claim-row:hover { background: rgba(255,255,255,0.03); }
+
+        .claim-key {
+            font-family: var(--mono);
+            font-size: 0.75rem;
+            color: var(--muted);
+            padding-top: 0.05rem;
+        }
+
+        .claim-val {
+            font-family: var(--mono);
+            font-size: 0.78rem;
+            color: var(--text);
+            word-break: break-all;
+        }
+
+        .claim-val.string { color: #86efac; }
+        .claim-val.number { color: #93c5fd; }
+        .claim-val.time   { color: #fcd34d; }
+
+        /* ── Permissions ── */
+        .perm-grid { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+
+        .perm-tag {
+            font-family: var(--mono);
+            font-size: 0.68rem;
+            font-weight: 500;
+            padding: 0.2em 0.55em;
+            border-radius: 5px;
+            border: 1px solid;
+        }
+
+        .perm-create  { background: rgba(16,185,129,0.1);  color: #10b981; border-color: rgba(16,185,129,0.25); }
+        .perm-read    { background: rgba(59,130,246,0.1);   color: #60a5fa; border-color: rgba(59,130,246,0.25); }
+        .perm-update  { background: rgba(245,158,11,0.1);   color: #fbbf24; border-color: rgba(245,158,11,0.25); }
+        .perm-delete  { background: rgba(239,68,68,0.1);    color: #f87171; border-color: rgba(239,68,68,0.25); }
+        .perm-other   { background: rgba(168,85,247,0.1);   color: #c084fc; border-color: rgba(168,85,247,0.25); }
+
+        /* ── Response Log ── */
+        .log-box {
+            font-family: var(--mono);
+            font-size: 0.77rem;
+            background: rgba(0,0,0,0.35);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.85rem;
+            max-height: 200px;
+            overflow-y: auto;
+            line-height: 1.7;
+            color: #94a3b8;
+        }
+
+        .log-entry { margin-bottom: 0.15rem; display: flex; gap: 0.75rem; }
+        .log-time  { color: var(--muted); flex-shrink: 0; }
+        .log-ok    { color: var(--green); }
+        .log-err   { color: var(--red); }
+        .log-info  { color: #818cf8; }
+
+        /* ── JWKS Display ── */
+        .jwks-box {
+            font-family: var(--mono);
+            font-size: 0.75rem;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.85rem;
+            overflow-x: auto;
+            white-space: pre;
+            color: #94a3b8;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        /* ── Token Timer ── */
+        .timer-bar-outer {
+            height: 4px;
+            border-radius: 2px;
+            background: rgba(255,255,255,0.08);
+            margin-top: 0.5rem;
+            overflow: hidden;
+        }
+        .timer-bar-inner {
+            height: 100%;
+            border-radius: 2px;
+            background: linear-gradient(90deg, #6366f1, #8b5cf6);
+            transition: width 1s linear;
+        }
+
+        .timer-text {
+            font-size: 0.78rem;
+            color: var(--muted);
+            margin-top: 0.4rem;
+            font-family: var(--mono);
+        }
+
+        /* ── Utility ── */
+        .placeholder {
+            text-align: center;
+            padding: 2rem;
+            color: var(--muted);
+            font-size: 0.85rem;
+        }
+        .placeholder .icon { font-size: 2rem; margin-bottom: 0.5rem; }
+
+        .section-title {
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 0.75rem;
+        }
+
+        .spinner {
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            display: none;
+        }
+        .loading .spinner { display: block; }
+        .loading .btn-text { display: none; }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .divider {
+            height: 1px;
+            background: var(--border);
+            margin: 0.5rem 0;
+        }
+
+        .copy-btn {
+            background: none;
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            color: var(--muted);
+            font-size: 0.7rem;
+            padding: 0.15rem 0.5rem;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.15s;
+        }
+        .copy-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.15); }
+
+        .ttl-warning { color: var(--yellow); }
+        .ttl-expired { color: var(--red); }
+    </style>
+</head>
+<body>
+
+<!-- Top Bar -->
+<div class="top-bar">
+    <a href="/dev">Dev Console</a>
+    <span class="sep">/</span>
+    <span class="current">IAM Service — Auth Tester</span>
+    <div class="service-badge">
+        <div class="dot"></div>
+        :8081
+    </div>
+</div>
+
+<div class="main">
+
+    <!-- ═══════════════════════════════════════════════════════════ LEFT PANEL -->
+    <div class="left-panel">
+
+        <!-- Token Status -->
+        <div>
+            <p class="panel-title">Token Status</p>
+            <div id="status-access" class="status-row status-none" style="margin-top:0.75rem;">
+                <span>Access Token</span><span id="status-access-val">None</span>
+            </div>
+            <div id="status-refresh" class="status-row status-none">
+                <span>Refresh Cookie</span><span id="status-refresh-val">Unknown</span>
+            </div>
+            <div id="ttl-wrap" style="display:none;">
+                <div class="timer-bar-outer"><div id="ttl-bar" class="timer-bar-inner" style="width:100%"></div></div>
+                <p id="ttl-text" class="timer-text">Access token valid for: 15m 00s</p>
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Login Card -->
+        <div class="card">
+            <div class="card-head">🔐 <span>Login</span></div>
+            <div class="card-body">
+                <div class="field">
+                    <label>Email</label>
+                    <input id="in-email" type="email" value="admin@cms.system"/>
+                </div>
+                <div class="field">
+                    <label>Password</label>
+                    <input id="in-pass" type="password" value="Admin@123!"/>
+                </div>
+                <div class="field">
+                    <label>Tenant Code</label>
+                    <input id="in-tenant" type="text" value="cms-system"/>
+                </div>
+                <button id="btn-login" class="btn btn-primary" onclick="doLogin()">
+                    <div class="spinner"></div>
+                    <span class="btn-text">Sign In</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Token Actions -->
+        <div class="card">
+            <div class="card-head">🔄 <span>Token Actions</span></div>
+            <div class="card-body">
+                <div class="btn-row" style="margin-bottom:0.6rem;">
+                    <button id="btn-refresh" class="btn btn-secondary" onclick="doRefresh()" disabled>
+                        <div class="spinner"></div>
+                        <span class="btn-text">↻ Refresh</span>
+                    </button>
+                    <button id="btn-logout" class="btn btn-danger" onclick="doLogout()" disabled>
+                        <div class="spinner"></div>
+                        <span class="btn-text">✕ Logout</span>
+                    </button>
+                </div>
+                <button class="btn btn-secondary" onclick="loadJwks()">
+                    <span>🔑 Load JWKS</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Bad Login Tester -->
+        <div class="card">
+            <div class="card-head">🧪 <span>Brute-Force Tester</span></div>
+            <div class="card-body">
+                <p style="font-size:0.78rem;color:var(--muted);margin-bottom:0.75rem;">
+                    Send repeated bad-password attempts. After 5: soft lock (15m). After 10: hard lock.
+                </p>
+                <div style="display:flex;gap:0.5rem;align-items:center;margin-bottom:0.75rem;">
+                    <label style="margin:0;white-space:nowrap;">Attempts:</label>
+                    <input id="in-attempts" type="number" value="6" min="1" max="15" style="width:70px;"/>
+                </div>
+                <button class="btn btn-secondary" onclick="doBruteForce()">
+                    <span>⚡ Run Test</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Force Revoke All Tokens -->
+        <div class="card">
+            <div class="card-head">💀 <span>Force Revoke All Tokens</span></div>
+            <div class="card-body">
+                <p style="font-size:0.78rem;color:var(--muted);margin-bottom:0.75rem;">
+                    Security incident response — revoke ALL active refresh tokens for the current user.
+                    Logs them out from every device. Access tokens remain valid until natural expiry (~15min).
+                </p>
+                <button id="btn-revoke" class="btn btn-danger" onclick="doRevokeAll()" disabled>
+                    <div class="spinner"></div>
+                    <span class="btn-text">💀 Revoke All My Tokens</span>
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════ RIGHT PANEL -->
+    <div class="right-panel">
+
+        <!-- JWT Inspector -->
+        <div>
+            <p class="section-title">JWT Inspector</p>
+            <div id="jwt-inspector">
+                <div class="placeholder">
+                    <div class="icon">🔍</div>
+                    <p>Sign in to inspect your token</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- JWKS Viewer -->
+        <div id="jwks-section" style="display:none;">
+            <p class="section-title">JWKS — Public Key</p>
+            <div id="jwks-content" class="jwks-box"></div>
+        </div>
+
+        <!-- Response Log -->
+        <div>
+            <p class="section-title" style="display:flex;justify-content:space-between;">
+                <span>Request Log</span>
+                <button class="copy-btn" onclick="clearLog()">Clear</button>
+            </p>
+            <div id="log-box" class="log-box">
+                <div class="log-entry"><span class="log-time">--:--:--</span><span class="log-info">Waiting for first request...</span></div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+let accessToken = null;
+let tokenIssuedAt = null;
+let tokenExpiresAt = null;
+let ttlInterval = null;
+
+// ── Logging ───────────────────────────────────────────────────────────────
+function log(msg, type = 'info') {
+    const box = document.getElementById('log-box');
+    const ts = new Date().toLocaleTimeString('en-GB', {hour12: false});
+    const entry = document.createElement('div');
+    entry.className = 'log-entry';
+    entry.innerHTML = `<span class="log-time">${ts}</span><span class="log-${type}">${msg}</span>`;
+    box.appendChild(entry);
+    box.scrollTop = box.scrollHeight;
+}
+
+function clearLog() {
+    document.getElementById('log-box').innerHTML = '';
+}
+
+// ── JWT Decode ────────────────────────────────────────────────────────────
+function decodeJwt(token) {
+    try {
+        const [h, p, s] = token.split('.');
+        const header  = JSON.parse(atob(h.replace(/-/g,'+').replace(/_/g,'/')));
+        const payload = JSON.parse(atob(p.replace(/-/g,'+').replace(/_/g,'/')));
+        return { header, payload, raw: { h, p, s } };
+    } catch(e) { return null; }
+}
+
+function fmtTime(epoch) {
+    return new Date(epoch * 1000).toLocaleString();
+}
+
+function permClass(perm) {
+    const action = perm.split(':')[1] || '';
+    if (action === 'CREATE') return 'perm-create';
+    if (action === 'READ')   return 'perm-read';
+    if (action === 'UPDATE') return 'perm-update';
+    if (action === 'DELETE') return 'perm-delete';
+    return 'perm-other';
+}
+
+function renderJwt(token) {
+    const decoded = decodeJwt(token);
+    if (!decoded) return;
+    const { header, payload, raw } = decoded;
+
+    const claimRows = (obj, skip = []) => Object.entries(obj)
+        .filter(([k]) => !skip.includes(k))
+        .map(([k, v]) => {
+            let cls = 'string';
+            let display = JSON.stringify(v);
+            if (k === 'exp' || k === 'iat') { cls = 'time'; display = `${v} (${fmtTime(v)})`; }
+            else if (typeof v === 'number') cls = 'number';
+            else if (Array.isArray(v))      display = v.join(', ');
+            return `<div class="claim-row">
+                        <span class="claim-key">${k}</span>
+                        <span class="claim-val ${cls}">${display.replace(/^"|"$/g,'')}</span>
+                    </div>`;
+        }).join('');
+
+    const permTags = (payload.permissions || [])
+        .map(p => `<span class="perm-tag ${permClass(p)}">${p}</span>`)
+        .join('');
+
+    document.getElementById('jwt-inspector').innerHTML = `
+        <div class="jwt-section">
+            <div>
+                <p class="section-title" style="margin-bottom:0.4rem;">Raw Token <button class="copy-btn" onclick="copyToken()">Copy</button></p>
+                <div class="jwt-raw">
+                    <span class="jwt-part-header">${raw.h}</span>.<span class="jwt-part-payload">${raw.p}</span>.<span class="jwt-part-sig">${raw.s}</span>
+                </div>
+                <p style="font-size:0.7rem;color:var(--muted);margin-top:0.35rem;">
+                    🟣 Header &nbsp; 🔵 Payload &nbsp; 🟢 Signature
+                </p>
+            </div>
+
+            <div class="card">
+                <div class="card-head">📋 Header</div>
+                <div class="card-body claims-grid">${claimRows(header)}</div>
+            </div>
+
+            <div class="card">
+                <div class="card-head">👤 Identity Claims</div>
+                <div class="card-body claims-grid">
+                    ${claimRows(payload, ['permissions','roles','exp','iat','jti'])}
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-head">⏱ Timing</div>
+                <div class="card-body claims-grid">
+                    ${claimRows({iat: payload.iat, exp: payload.exp, jti: payload.jti})}
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-head">🛡 Roles</div>
+                <div class="card-body">
+                    <div class="perm-grid">
+                        ${(payload.roles||[]).map(r=>`<span class="perm-tag perm-other">${r}</span>`).join('')}
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-head">🔑 Permissions (${(payload.permissions||[]).length})</div>
+                <div class="card-body">
+                    <div class="perm-grid">${permTags}</div>
+                </div>
+            </div>
+        </div>`;
+}
+
+function copyToken() {
+    if (accessToken) {
+        navigator.clipboard.writeText(accessToken);
+        log('Access token copied to clipboard', 'info');
+    }
+}
+
+// ── TTL Timer ─────────────────────────────────────────────────────────────
+function startTtlTimer(expiresAt, issuedAt) {
+    tokenExpiresAt = expiresAt;
+    tokenIssuedAt  = issuedAt;
+    if (ttlInterval) clearInterval(ttlInterval);
+
+    document.getElementById('ttl-wrap').style.display = 'block';
+
+    function tick() {
+        const now   = Math.floor(Date.now() / 1000);
+        const total = tokenExpiresAt - tokenIssuedAt;
+        const left  = tokenExpiresAt - now;
+        const pct   = Math.max(0, (left / total) * 100);
+
+        const bar = document.getElementById('ttl-bar');
+        bar.style.width = pct + '%';
+
+        if (pct < 25) bar.style.background = 'linear-gradient(90deg, #ef4444, #f87171)';
+        else if (pct < 50) bar.style.background = 'linear-gradient(90deg, #f59e0b, #fbbf24)';
+        else bar.style.background = 'linear-gradient(90deg, #6366f1, #8b5cf6)';
+
+        const m = Math.max(0, Math.floor(left / 60));
+        const s = Math.max(0, left % 60);
+        const txt = document.getElementById('ttl-text');
+        if (left <= 0) {
+            txt.innerHTML = '<span class="ttl-expired">Access token expired — click Refresh</span>';
+            setStatus('access', 'warn', 'Expired');
+        } else {
+            txt.textContent = `Access token valid for: ${m}m ${String(s).padStart(2,'0')}s`;
+        }
+    }
+
+    tick();
+    ttlInterval = setInterval(tick, 1000);
+}
+
+// ── Status Helpers ────────────────────────────────────────────────────────
+function setStatus(which, cls, val) {
+    const el  = document.getElementById(`status-${which}`);
+    const txt = document.getElementById(`status-${which}-val`);
+    el.className  = `status-row status-${cls}`;
+    txt.textContent = val;
+}
+
+function setLoading(btnId, yes) {
+    const btn = document.getElementById(btnId);
+    if (!btn) return;
+    btn.classList.toggle('loading', yes);
+    btn.disabled = yes;
+}
+
+// ── Login ─────────────────────────────────────────────────────────────────
+async function doLogin() {
+    const email    = document.getElementById('in-email').value.trim();
+    const password = document.getElementById('in-pass').value;
+    const tenant   = document.getElementById('in-tenant').value.trim();
+
+    if (!email || !password || !tenant) { log('Fill in all fields', 'err'); return; }
+
+    setLoading('btn-login', true);
+    log(`POST /api/v1/auth/login → ${email} @ ${tenant}`, 'info');
+
+    try {
+        const res = await fetch('/api/v1/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ email, password, tenantCode: tenant })
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+            accessToken = data.data.accessToken;
+            const decoded = decodeJwt(accessToken);
+
+            log(`✓ Login successful — ${decoded?.payload?.fullName || email}`, 'ok');
+            log(`  Token expires in ${data.data.expiresIn}s`, 'info');
+
+            setStatus('access', 'ok', 'Valid ✓');
+            setStatus('refresh', 'ok', 'Cookie Set ✓');
+
+            document.getElementById('btn-refresh').disabled = false;
+            document.getElementById('btn-logout').disabled  = false;
+            document.getElementById('btn-revoke').disabled  = false;
+
+            renderJwt(accessToken);
+
+            if (decoded?.payload) {
+                startTtlTimer(decoded.payload.exp, decoded.payload.iat);
+            }
+        } else {
+            log(`✗ ${data.error.code}: ${data.error.message}`, 'err');
+            setStatus('access', 'error', data.error.code);
+        }
+    } catch(e) {
+        log(`✗ Network error: ${e.message}`, 'err');
+    } finally {
+        setLoading('btn-login', false);
+    }
+}
+
+// ── Refresh ───────────────────────────────────────────────────────────────
+async function doRefresh() {
+    setLoading('btn-refresh', true);
+    log('POST /api/v1/auth/refresh → using HttpOnly cookie', 'info');
+
+    try {
+        const res = await fetch('/api/v1/auth/refresh', {
+            method: 'POST',
+            credentials: 'same-origin'
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+            accessToken = data.data.accessToken;
+            const decoded = decodeJwt(accessToken);
+
+            log('✓ Token refreshed — new access token issued', 'ok');
+            log('  Old refresh token revoked, new cookie set', 'info');
+
+            setStatus('access', 'ok', 'Refreshed ✓');
+            setStatus('refresh', 'ok', 'Rotated ✓');
+
+            renderJwt(accessToken);
+
+            if (decoded?.payload) {
+                startTtlTimer(decoded.payload.exp, decoded.payload.iat);
+            }
+        } else {
+            log(`✗ ${data.error.code}: ${data.error.message}`, 'err');
+            setStatus('refresh', 'error', 'Invalid/Expired');
+        }
+    } catch(e) {
+        log(`✗ Network error: ${e.message}`, 'err');
+    } finally {
+        setLoading('btn-refresh', false);
+    }
+}
+
+// ── Logout ────────────────────────────────────────────────────────────────
+async function doLogout() {
+    setLoading('btn-logout', true);
+    log('POST /api/v1/auth/logout → revoking refresh token', 'info');
+
+    try {
+        await fetch('/api/v1/auth/logout', {
+            method: 'POST',
+            credentials: 'same-origin'
+        });
+
+        accessToken = null;
+        if (ttlInterval) clearInterval(ttlInterval);
+
+        log('✓ Logged out — refresh token revoked, cookie cleared', 'ok');
+
+        setStatus('access', 'none', 'None');
+        setStatus('refresh', 'none', 'Cleared');
+
+        document.getElementById('btn-refresh').disabled = true;
+        document.getElementById('btn-logout').disabled  = true;
+        document.getElementById('ttl-wrap').style.display = 'none';
+        document.getElementById('jwt-inspector').innerHTML = `
+            <div class="placeholder">
+                <div class="icon">🔍</div><p>Sign in to inspect your token</p>
+            </div>`;
+    } catch(e) {
+        log(`✗ Network error: ${e.message}`, 'err');
+    } finally {
+        setLoading('btn-logout', false);
+    }
+}
+
+// ── JWKS ──────────────────────────────────────────────────────────────────
+async function loadJwks() {
+    log('GET /api/v1/auth/.well-known/jwks.json', 'info');
+    try {
+        const res  = await fetch('/api/v1/auth/.well-known/jwks.json');
+        const data = await res.json();
+        const sec  = document.getElementById('jwks-section');
+        sec.style.display = 'block';
+        document.getElementById('jwks-content').textContent = JSON.stringify(data, null, 2);
+        log(`✓ JWKS loaded — kid: ${data.keys?.[0]?.kid}, kty: ${data.keys?.[0]?.kty}`, 'ok');
+    } catch(e) {
+        log(`✗ JWKS fetch failed: ${e.message}`, 'err');
+    }
+}
+
+// ── Brute Force Tester ────────────────────────────────────────────────────
+async function doBruteForce() {
+    const n      = parseInt(document.getElementById('in-attempts').value) || 6;
+    const email  = document.getElementById('in-email').value.trim();
+    const tenant = document.getElementById('in-tenant').value.trim();
+
+    log(`⚡ Sending ${n} bad-password requests for ${email}@${tenant}`, 'info');
+
+    for (let i = 1; i <= n; i++) {
+        try {
+            const res  = await fetch('/api/v1/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ email, password: `WRONG_${i}`, tenantCode: tenant })
+            });
+            const data = await res.json();
+            const code = data.error?.code || 'OK';
+            log(`  Attempt ${i}/${n} → ${code}: ${data.error?.message || 'success'}`,
+                code === 'ACCOUNT_LOCKED' ? 'warn' : 'err');
+        } catch(e) {
+            log(`  Attempt ${i} → network error`, 'err');
+        }
+        await new Promise(r => setTimeout(r, 200));
+    }
+    log('⚡ Brute-force test complete', 'info');
+}
+
+// ── Force Revoke All Tokens ───────────────────────────────────────────────
+async function doRevokeAll() {
+    if (!accessToken) { log('Login first', 'err'); return; }
+
+    const decoded = decodeJwt(accessToken);
+    const userId = decoded?.payload?.userId || decoded?.payload?.sub;
+    if (!userId) { log('Cannot determine userId from token', 'err'); return; }
+
+    setLoading('btn-revoke', true);
+    log(`POST /api/v1/iam/users/${userId}/revoke-all-tokens`, 'info');
+
+    try {
+        const res = await fetch(`/api/v1/iam/users/${userId}/revoke-all-tokens`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${accessToken}` },
+            credentials: 'same-origin'
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+            log(`✓ ${data.data.message}`, 'ok');
+            // Cookie is not cleared server-side — next refresh will fail (token revoked)
+            setStatus('refresh', 'warn', 'Revoked ✓');
+        } else {
+            log(`✗ ${data.error.code}: ${data.error.message}`, 'err');
+        }
+    } catch(e) {
+        log(`✗ Network error: ${e.message}`, 'err');
+    } finally {
+        setLoading('btn-revoke', false);
+    }
+}
+
+// ── Enter key on login ────────────────────────────────────────────────────
+document.getElementById('in-pass').addEventListener('keydown', e => {
+    if (e.key === 'Enter') doLogin();
+});
+</script>
+</body>
+</html>

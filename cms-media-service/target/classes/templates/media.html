@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>CMS Media Service - Dev Console</title>
+    <style>
+        body { font-family: system-ui, -apple-system, sans-serif; margin: 40px; background: #f9fafb; color: #111827; }
+        h1 { color: #2563eb; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .log-container { background: #1f2937; color: #10b981; padding: 15px; border-radius: 6px; font-family: monospace; white-space: pre-wrap; height: 300px; overflow-y: auto; }
+        .btn { background: #2563eb; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
+        .btn:hover { background: #1d4ed8; }
+        .status { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #10b981; margin-right: 5px; }
+        input[type="text"], input[type="file"] { padding: 8px; border: 1px solid #d1d5db; border-radius: 4px; width: 100%; margin-bottom: 10px; box-sizing: border-box; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-top: 20px; }
+        .media-card { background: white; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; }
+        .media-card img { width: 100%; height: 150px; object-fit: cover; }
+        .media-card .info { padding: 10px; font-size: 12px; }
+    </style>
+</head>
+<body>
+
+    <h1><span class="status"></span> Media Service Dev Console</h1>
+
+    <div class="card">
+        <h3>1. Credentials</h3>
+        <div class="field">
+            <label>Auth JWT Token (from login)</label>
+            <input id="token-val" placeholder="eyJhbGciOiJSUzI1Ni..." oninput="parseToken()"/>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div>
+                <label>Tenant ID (X-Tenant-Id)</label>
+                <input id="tenant-id" placeholder="UUID format"/>
+            </div>
+            <div>
+                <label>User ID (X-User-Id)</label>
+                <input id="user-id" placeholder="UUID format"/>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>2. Upload Media</h3>
+        <form id="uploadForm" onsubmit="event.preventDefault(); uploadMedia();">
+            <input type="file" id="mediaFile" required>
+            <input type="text" id="altText" placeholder="Alt Text (Optional)">
+            <input type="text" id="caption" placeholder="Caption (Optional)">
+            <button type="submit" class="btn">Upload File</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h3>3. Media Library</h3>
+        <button class="btn" onclick="fetchMediaList()">Refresh Library</button>
+        <div id="mediaGrid" class="grid"></div>
+    </div>
+
+    <div class="card">
+        <h3>Console Output</h3>
+        <div class="log-container" id="console">Console initialized. Enter token to load media...</div>
+    </div>
+
+    <script>
+        function log(msg) {
+            const c = document.getElementById('console');
+            const time = new Date().toLocaleTimeString();
+            c.innerHTML += `\n[${time}] ${msg}`;
+            c.scrollTop = c.scrollHeight;
+        }
+
+        function decodeJwt(t) {
+            try {
+                const p = t.split('.')[1];
+                return JSON.parse(atob(p.replace(/-/g,'+').replace(/_/g,'/')));
+            } catch(e) { return null; }
+        }
+
+        function parseToken() {
+            const token = document.getElementById('token-val').value.trim();
+            if (!token) return;
+
+            const payload = decodeJwt(token);
+            if (payload) {
+                log(`✓ Token parsed — issued for ${payload.email} (${payload.tenantCode})`);
+                if (payload.tenantId) document.getElementById('tenant-id').value = payload.tenantId;
+                if (payload.userId) document.getElementById('user-id').value = payload.userId;
+                localStorage.setItem('accessToken', token);
+                fetchMediaList();
+            } else {
+                log('✗ Invalid token format');
+            }
+        }
+
+        window.onload = function() {
+            const savedToken = localStorage.getItem('accessToken') || '';
+            if (savedToken) {
+                document.getElementById('token-val').value = savedToken;
+                parseToken();
+            }
+        }
+
+        function getHeaders() {
+            const token = document.getElementById('token-val').value.trim();
+            const tenantId = document.getElementById('tenant-id').value.trim();
+            const userId = document.getElementById('user-id').value.trim();
+
+            const headers = {};
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+            if (tenantId) headers['X-Tenant-Id'] = tenantId;
+            if (userId) headers['X-User-Id'] = userId;
+            return headers;
+        }
+
+        async function uploadMedia() {
+            const headers = getHeaders();
+            if (!headers['X-Tenant-Id']) return log("✗ Tenant ID is required to upload media");
+
+            const fileInput = document.getElementById('mediaFile');
+            const file = fileInput.files[0];
+            if (!file) return log("✗ No file selected");
+
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            const altText = document.getElementById('altText').value;
+            if (altText) formData.append('altText', altText);
+            
+            const caption = document.getElementById('caption').value;
+            if (caption) formData.append('caption', caption);
+
+            log(`POST /api/v1/media/upload (File: ${file.name})`);
+            
+            try {
+                const res = await fetch('/api/v1/media/upload', {
+                    method: 'POST',
+                    headers: headers,
+                    body: formData
+                });
+                
+                const data = await res.json();
+                if (res.ok) {
+                    log("✓ Upload successful. Asset ID: " + data.data.id);
+                    document.getElementById('uploadForm').reset();
+                    fetchMediaList();
+                } else {
+                    log("✗ Upload failed: " + JSON.stringify(data.error));
+                }
+            } catch (err) {
+                log("✗ Upload error: " + err);
+            }
+        }
+
+        async function fetchMediaList() {
+            const headers = getHeaders();
+            if (!headers['X-Tenant-Id']) return log("✗ Tenant ID is required to fetch media list");
+            log("GET /api/v1/media");
+            
+            try {
+                const res = await fetch('/api/v1/media', {
+                    headers: headers
+                });
+                
+                const data = await res.json();
+                if (res.ok) {
+                    log(`Loaded ${data.data.length} media assets`);
+                    renderGrid(data.data);
+                } else {
+                    log("✗ Failed to load media: " + JSON.stringify(data.error));
+                }
+            } catch (err) {
+                log("✗ Error loading media: " + err);
+            }
+        }
+
+        async function deleteMedia(id) {
+            const headers = getHeaders();
+            if (!headers['X-Tenant-Id']) return log("✗ Tenant ID is required");
+            log(`DELETE /api/v1/media/${id}`);
+            
+            try {
+                const res = await fetch(`/api/v1/media/${id}`, {
+                    method: 'DELETE',
+                    headers: headers
+                });
+                
+                if (res.ok) {
+                    log("✓ Deleted media " + id);
+                    fetchMediaList();
+                } else {
+                    const data = await res.json();
+                    log("✗ Delete failed: " + JSON.stringify(data.error));
+                }
+            } catch (err) {
+                log("✗ Delete error: " + err);
+            }
+        }
+
+        function renderGrid(assets) {
+            const grid = document.getElementById('mediaGrid');
+            grid.innerHTML = '';
+            
+            assets.forEach(asset => {
+                const isImage = asset.mimeType.startsWith('image/');
+                const preview = isImage 
+                    ? `<img src="${asset.url}" alt="${asset.altText || ''}">` 
+                    : `<div style="height:150px; background:#e5e7eb; display:flex; align-items:center; justify-content:center; color:#6b7280;">File: ${asset.mimeType}</div>`;
+                
+                grid.innerHTML += `
+                    <div class="media-card">
+                        ${preview}
+                        <div class="info">
+                            <strong>${asset.originalName}</strong><br>
+                            Size: ${(asset.fileSizeBytes / 1024).toFixed(1)} KB<br>
+                            <a href="${asset.url}" target="_blank" style="color:#2563eb; text-decoration:none;">Open URL</a>
+                            <button onclick="deleteMedia('${asset.id}')" style="background:#ef4444; color:white; border:none; padding:2px 5px; border-radius:3px; float:right; cursor:pointer; font-size:11px;">Delete</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+    </script>
+</body>
+</html>
