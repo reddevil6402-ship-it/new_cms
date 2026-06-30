@@ -82,20 +82,22 @@ export interface ContentType {
   id: string;
   tenantId: string;
   code: string;
-  name: string;
+  displayName: string;
   description?: string;
-  isVersioned: boolean;
-  isPublishable: boolean;
+  versionable: boolean;
+  schedulable: boolean;
+  hasWorkflow: boolean;
   createdAt: string;
   fieldDefinitions: FieldDefinition[];
 }
 
 export interface CreateContentTypeRequest {
   code: string;
-  name: string;
+  displayName: string;
   description?: string;
-  isVersioned: boolean;
-  isPublishable: boolean;
+  versionable: boolean;
+  schedulable: boolean;
+  hasWorkflow: boolean;
 }
 
 export interface CreateFieldDefinitionRequest {
@@ -113,7 +115,9 @@ export interface ContentItem {
   contentTypeId: string;
   contentTypeCode: string;
   status: "DRAFT" | "REVIEW" | "PUBLISHED" | "ARCHIVED";
-  payload: Record<string, unknown>;
+  title: string;
+  slug?: string;
+  body: Record<string, unknown>;
   version: number;
   createdAt: string;
   updatedAt: string;

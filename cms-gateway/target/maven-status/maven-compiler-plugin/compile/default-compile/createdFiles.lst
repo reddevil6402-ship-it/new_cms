@@ -1,0 +1,4 @@
+com\cms\gateway\filter\JwtForwardingFilter.class
+com\cms\gateway\CmsGatewayApplication.class
+com\cms\gateway\filter\RequestLoggingFilter.class
+com\cms\gateway\config\SecurityConfig.class

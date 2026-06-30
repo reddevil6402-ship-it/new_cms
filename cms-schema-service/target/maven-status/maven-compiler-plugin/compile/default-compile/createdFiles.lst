@@ -1,0 +1,17 @@
+com\cms\schema\controller\DevTestController.class
+com\cms\schema\config\SecurityConfig.class
+com\cms\schema\domain\ContentType$ContentTypeStatus.class
+com\cms\schema\service\ContentTypeService.class
+com\cms\schema\dto\request\ContentTypeRequest.class
+com\cms\schema\dto\response\FieldDefinitionResponse.class
+com\cms\schema\controller\ContentTypeController.class
+com\cms\schema\repository\ContentTypeRepository.class
+com\cms\schema\repository\FieldDefinitionRepository.class
+com\cms\schema\domain\FieldDefinition$FieldType.class
+com\cms\schema\domain\Site.class
+com\cms\schema\dto\request\FieldDefinitionRequest.class
+com\cms\schema\CmsSchemaApplication.class
+com\cms\schema\domain\FieldDefinition.class
+com\cms\schema\dto\response\ContentTypeResponse.class
+com\cms\schema\config\DataSourceConfig.class
+com\cms\schema\domain\ContentType.class

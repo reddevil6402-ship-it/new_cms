@@ -1,0 +1,10 @@
+com\cms\media\domain\MediaAsset.class
+com\cms\media\repository\MediaAssetRepository.class
+com\cms\media\dto\response\MediaResponse.class
+com\cms\media\config\DataSourceConfig.class
+com\cms\media\config\WebMvcConfig.class
+com\cms\media\config\SecurityConfig.class
+com\cms\media\controller\DevTestController.class
+com\cms\media\service\MediaService.class
+com\cms\media\CmsMediaApplication.class
+com\cms\media\controller\MediaController.class

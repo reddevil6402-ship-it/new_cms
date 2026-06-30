@@ -1,0 +1,11 @@
+com\cms\search\CmsSearchApplication.class
+com\cms\search\dto\request\IndexRequest.class
+com\cms\search\dto\response\SearchResponse.class
+com\cms\search\dto\response\SearchResponse$SearchResultHit$SearchResultHitBuilder.class
+com\cms\search\config\OpenSearchConfig.class
+com\cms\search\dto\response\SearchResponse$SearchResultHit.class
+com\cms\search\controller\SearchController.class
+com\cms\search\dto\response\SearchResponse$SearchResponseBuilder.class
+com\cms\search\config\SecurityConfig.class
+com\cms\search\controller\DevTestController.class
+com\cms\search\service\SearchService.class

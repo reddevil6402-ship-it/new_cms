@@ -7,25 +7,84 @@ import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import Spinner from "@/components/ui/Spinner";
+import Modal, { FormField, TextInput, TextareaInput } from "@/components/ui/Modal";
 
 export default function FormsPage() {
   const [forms, setForms] = useState<FormDefinition[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function loadForms() {
-      try {
-        // The API returns an array directly for /definitions currently in the form service
-        const res = await api.get<FormDefinition[]>("/api/v1/forms/definitions");
-        setForms(Array.isArray(res) ? res : []);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
+  // Modal form states
+  const [isOpen, setIsOpen] = useState(false);
+  const [code, setCode] = useState("");
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [schema, setSchema] = useState('{\n  "type": "object",\n  "properties": {\n    "name": { "type": "string" },\n    "email": { "type": "string", "format": "email" }\n  }\n}');
+  const [uiSchema, setUiSchema] = useState('{\n  "ui:order": ["name", "email"]\n}');
+  const [submitAction, setSubmitAction] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  const loadForms = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get<FormDefinition[]>("/api/v1/forms/definitions");
+      setForms(Array.isArray(res) ? res : []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  useEffect(() => {
     loadForms();
   }, []);
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setFormError(null);
+
+    // Validate JSON Schemas
+    try {
+      JSON.parse(schema);
+    } catch {
+      setFormError("Schema must be valid JSON.");
+      setSubmitting(false);
+      return;
+    }
+    try {
+      JSON.parse(uiSchema);
+    } catch {
+      setFormError("UI Schema must be valid JSON.");
+      setSubmitting(false);
+      return;
+    }
+
+    try {
+      await api.post("/api/v1/forms/definitions", {
+        code,
+        name,
+        description,
+        schema,
+        uiSchema,
+        submitAction,
+        isActive: true,
+      });
+      setCode("");
+      setName("");
+      setDescription("");
+      setSchema('{\n  "type": "object",\n  "properties": {\n    "name": { "type": "string" },\n    "email": { "type": "string", "format": "email" }\n  }\n}');
+      setUiSchema('{\n  "ui:order": ["name", "email"]\n}');
+      setSubmitAction("");
+      setIsOpen(false);
+      await loadForms();
+    } catch (err: any) {
+      setFormError(err.message || "Failed to create form definition.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -37,6 +96,7 @@ export default function FormsPage() {
           </p>
         </div>
         <Button
+          onClick={() => setIsOpen(true)}
           leftIcon={
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -99,6 +159,89 @@ export default function FormsPage() {
           </table>
         </div>
       </Card>
+
+      <Modal
+        open={isOpen}
+        onClose={() => setIsOpen(false)}
+        title="Create Form Definition"
+        description="Add a new form endpoint for submissions."
+        size="lg"
+      >
+        <form onSubmit={handleCreate} className="space-y-4">
+          {formError && (
+            <div className="p-3 text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg">
+              {formError}
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-4">
+            <FormField label="Form Name" required>
+              <TextInput
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Contact Form"
+              />
+            </FormField>
+
+            <FormField label="Form Code" required>
+              <TextInput
+                required
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder="e.g. contact_form (lowercase, no spaces)"
+                pattern="^[a-z0-9_]+$"
+                title="Only lowercase letters, numbers, and underscores are allowed"
+              />
+            </FormField>
+          </div>
+
+          <FormField label="Description">
+            <TextInput
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Describe the purpose of this form..."
+            />
+          </FormField>
+
+          <FormField label="JSON Schema" required>
+            <TextareaInput
+              required
+              value={schema}
+              onChange={(e) => setSchema(e.target.value)}
+              rows={4}
+              className="font-mono text-xs"
+            />
+          </FormField>
+
+          <FormField label="UI Schema (JSON)" required>
+            <TextareaInput
+              required
+              value={uiSchema}
+              onChange={(e) => setUiSchema(e.target.value)}
+              rows={3}
+              className="font-mono text-xs"
+            />
+          </FormField>
+
+          <FormField label="Submit Action / Webhook URL">
+            <TextInput
+              value={submitAction}
+              onChange={(e) => setSubmitAction(e.target.value)}
+              placeholder="e.g. http://webhook.site/..."
+            />
+          </FormField>
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-surface-800">
+            <Button variant="ghost" type="button" onClick={() => setIsOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="primary" type="submit" loading={submitting}>
+              Create Form
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

@@ -1,30 +1,70 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import Image from "next/image";
-import { api } from "@/lib/api";
+import { api, uploadFile } from "@/lib/api";
 import { MediaFile } from "@/types/cms";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Spinner from "@/components/ui/Spinner";
+import Modal, { FormField, TextInput } from "@/components/ui/Modal";
 
 export default function MediaPage() {
   const [files, setFiles] = useState<MediaFile[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function loadMedia() {
-      try {
-        const res = await api.get<MediaFile[]>("/api/v1/media");
-        setFiles(Array.isArray(res) ? res : []);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
+  // Modal form states
+  const [isOpen, setIsOpen] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [altText, setAltText] = useState("");
+  const [caption, setCaption] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  const loadMedia = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get<MediaFile[]>("/api/v1/media");
+      setFiles(Array.isArray(res) ? res : []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  useEffect(() => {
     loadMedia();
   }, []);
+
+  const handleUploadSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedFile) {
+      setFormError("Please select a file to upload.");
+      return;
+    }
+
+    setSubmitting(true);
+    setFormError(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+      if (altText) formData.append("altText", altText);
+      if (caption) formData.append("caption", caption);
+
+      await uploadFile("/api/v1/media/upload", formData);
+      
+      // Reset form states
+      setSelectedFile(null);
+      setAltText("");
+      setCaption("");
+      setIsOpen(false);
+      await loadMedia();
+    } catch (err: any) {
+      setFormError(err.message || "Failed to upload file.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -36,6 +76,7 @@ export default function MediaPage() {
           </p>
         </div>
         <Button
+          onClick={() => setIsOpen(true)}
           leftIcon={
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
@@ -69,11 +110,10 @@ export default function MediaPage() {
             <Card key={file.id} padding="none" hover className="overflow-hidden group cursor-pointer border-surface-800 bg-surface-900 flex flex-col h-full">
               <div className="aspect-square relative bg-surface-950 flex items-center justify-center p-2 border-b border-surface-800">
                 {file.mimeType.startsWith("image/") ? (
-                  <Image
-                    src={process.env.NEXT_PUBLIC_API_URL + file.url}
+                  <img
+                    src={file.url}
                     alt={file.alt || file.originalName}
-                    fill
-                    className="object-contain p-2 group-hover:scale-105 transition-transform duration-300"
+                    className="w-full h-full object-contain p-2 group-hover:scale-105 transition-transform duration-300"
                   />
                 ) : (
                   <svg className="w-12 h-12 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -97,6 +137,57 @@ export default function MediaPage() {
           ))}
         </div>
       )}
+
+      <Modal
+        open={isOpen}
+        onClose={() => setIsOpen(false)}
+        title="Upload Media Asset"
+        description="Upload images, documents, or video files to your media library."
+      >
+        <form onSubmit={handleUploadSubmit} className="space-y-4">
+          {formError && (
+            <div className="p-3 text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg">
+              {formError}
+            </div>
+          )}
+
+          <FormField label="Select File" required>
+            <input
+              type="file"
+              required
+              onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+              className="w-full px-3 py-2 text-sm bg-surface-800 border border-surface-700 rounded-lg text-slate-100 placeholder-slate-500 
+                focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent
+                transition-colors"
+            />
+          </FormField>
+
+          <FormField label="Alternative Text (Alt Text)">
+            <TextInput
+              value={altText}
+              onChange={(e) => setAltText(e.target.value)}
+              placeholder="e.g. Logo image or product photo description"
+            />
+          </FormField>
+
+          <FormField label="Caption / Description">
+            <TextInput
+              value={caption}
+              onChange={(e) => setCaption(e.target.value)}
+              placeholder="e.g. Official NextGen CMS logo"
+            />
+          </FormField>
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-surface-800">
+            <Button variant="ghost" type="button" onClick={() => setIsOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="primary" type="submit" loading={submitting}>
+              Upload File
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

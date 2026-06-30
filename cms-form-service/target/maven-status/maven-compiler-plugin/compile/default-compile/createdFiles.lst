@@ -1,0 +1,13 @@
+com\cms\form\domain\FormDefinition.class
+com\cms\form\dto\request\FormSubmitRequest.class
+com\cms\form\controller\DevTestController.class
+com\cms\form\service\FormSubmissionService.class
+com\cms\form\repository\FormSubmissionRepository.class
+com\cms\form\service\FormDefinitionService.class
+com\cms\form\controller\FormDefinitionController.class
+com\cms\form\controller\FormSubmissionController.class
+com\cms\form\config\DataSourceConfig.class
+com\cms\form\repository\FormDefinitionRepository.class
+com\cms\form\CmsFormApplication.class
+com\cms\form\domain\FormSubmission.class
+com\cms\form\config\SecurityConfig.class

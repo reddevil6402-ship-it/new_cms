@@ -1,0 +1,10 @@
+C:\Users\stadmin\Desktop\new_cms\cms-media-service\src\main\java\com\cms\media\CmsMediaApplication.java
+C:\Users\stadmin\Desktop\new_cms\cms-media-service\src\main\java\com\cms\media\config\DataSourceConfig.java
+C:\Users\stadmin\Desktop\new_cms\cms-media-service\src\main\java\com\cms\media\config\SecurityConfig.java
+C:\Users\stadmin\Desktop\new_cms\cms-media-service\src\main\java\com\cms\media\config\WebMvcConfig.java
+C:\Users\stadmin\Desktop\new_cms\cms-media-service\src\main\java\com\cms\media\controller\DevTestController.java
+C:\Users\stadmin\Desktop\new_cms\cms-media-service\src\main\java\com\cms\media\controller\MediaController.java
+C:\Users\stadmin\Desktop\new_cms\cms-media-service\src\main\java\com\cms\media\domain\MediaAsset.java
+C:\Users\stadmin\Desktop\new_cms\cms-media-service\src\main\java\com\cms\media\dto\response\MediaResponse.java
+C:\Users\stadmin\Desktop\new_cms\cms-media-service\src\main\java\com\cms\media\repository\MediaAssetRepository.java
+C:\Users\stadmin\Desktop\new_cms\cms-media-service\src\main\java\com\cms\media\service\MediaService.java
