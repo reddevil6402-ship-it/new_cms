@@ -74,7 +74,7 @@ interface StatCardProps {
   icon: React.ReactNode;
   change?: string;
   changeType?: "up" | "down" | "neutral";
-  color?: "brand" | "green" | "amber" | "red";
+  color?: "brand" | "green" | "amber" | "red" | "info";
   loading?: boolean;
 }
 
@@ -95,6 +95,10 @@ const colorMap = {
     icon: "bg-red-500/10 text-red-400",
     value: "text-red-400",
   },
+  info: {
+    icon: "bg-blue-500/10 text-blue-400",
+    value: "text-blue-400",
+  },
 };
 
 export function StatCard({
@@ -106,7 +110,7 @@ export function StatCard({
   color = "brand",
   loading = false,
 }: StatCardProps) {
-  const colors = colorMap[color];
+  const colors = colorMap[color] || colorMap.brand;
 
   return (
     <Card hover className="animate-fade-in">

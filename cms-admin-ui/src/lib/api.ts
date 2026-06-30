@@ -44,7 +44,11 @@ async function request<T>(
   // 204 No Content
   if (res.status === 204) return undefined as T;
 
-  return res.json() as Promise<T>;
+  const json = await res.json();
+  if (json && typeof json === "object" && "success" in json && "data" in json) {
+    return json.data as T;
+  }
+  return json as T;
 }
 
 // ─── Multipart upload wrapper ─────────────────────────────────────────────────
@@ -69,7 +73,11 @@ export async function uploadFile<T>(url: string, formData: FormData): Promise<T>
     throw new Error(err?.error?.message || `HTTP ${res.status}`);
   }
 
-  return res.json() as Promise<T>;
+  const json = await res.json();
+  if (json && typeof json === "object" && "success" in json && "data" in json) {
+    return json.data as T;
+  }
+  return json as T;
 }
 
 // ─── Typed HTTP verbs ─────────────────────────────────────────────────────────

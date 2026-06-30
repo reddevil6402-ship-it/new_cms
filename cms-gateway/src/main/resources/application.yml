@@ -47,6 +47,18 @@ spring:
           predicates:
             - Path=/api/v1/workflow/**
 
+        # ── Media Service ──────────────────────────────────────────────────
+        - id: media-service
+          uri: ${MEDIA_SERVICE_URL:http://localhost:8085}
+          predicates:
+            - Path=/api/v1/media/**
+
+        # ── Form Service ───────────────────────────────────────────────────
+        - id: form-service
+          uri: ${FORM_SERVICE_URL:http://localhost:8089}
+          predicates:
+            - Path=/api/v1/forms/**
+
 server:
   port: 8080
 

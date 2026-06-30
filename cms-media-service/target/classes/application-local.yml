@@ -1,5 +1,0 @@
-spring:
-  datasource:
-    url: jdbc:postgresql://localhost:5438/mediadb
-    username: cms_media
-    password: localpassword

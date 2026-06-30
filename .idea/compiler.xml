@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CompilerConfiguration">
+    <annotationProcessing>
+      <profile name="Annotation profile for cms-common" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <processorPath useClasspath="false">
+          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.34/lombok-1.18.34.jar" />
+        </processorPath>
+        <module name="cms-common" />
+      </profile>
+      <profile name="Maven default annotation processors profile" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <module name="cms-form-service" />
+        <module name="cms-audit-service" />
+        <module name="cms-gateway" />
+        <module name="cms-iam-service" />
+        <module name="cms-content-service" />
+        <module name="cms-schema-service" />
+        <module name="cms-search-service" />
+        <module name="cms-workflow-service" />
+        <module name="cms-notification-service" />
+        <module name="cms-media-service" />
+      </profile>
+    </annotationProcessing>
+  </component>
+  <component name="JavacSettings">
+    <option name="ADDITIONAL_OPTIONS_OVERRIDE">
+      <module name="cms-audit-service" options="-parameters" />
+      <module name="cms-content-service" options="-parameters" />
+      <module name="cms-form-service" options="-parameters" />
+      <module name="cms-gateway" options="-parameters" />
+      <module name="cms-iam-service" options="-parameters" />
+      <module name="cms-media-service" options="-parameters" />
+      <module name="cms-notification-service" options="-parameters" />
+      <module name="cms-schema-service" options="-parameters" />
+      <module name="cms-search-service" options="-parameters" />
+      <module name="cms-workflow-service" options="-parameters" />
+    </option>
+  </component>
+</project>

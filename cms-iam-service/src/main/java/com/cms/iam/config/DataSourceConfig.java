@@ -13,13 +13,13 @@ import javax.sql.DataSource;
 @Configuration
 public class DataSourceConfig {
 
-    @Value("${spring.datasource.url}")
+    @Value("${spring.datasource.url:jdbc:postgresql://localhost:5434/iamdb}")
     private String url;
 
-    @Value("${spring.datasource.username}")
+    @Value("${spring.datasource.username:cms_iam}")
     private String username;
 
-    @Value("${spring.datasource.password}")
+    @Value("${spring.datasource.password:localpassword}")
     private String password;
 
     @Value("${spring.datasource.hikari.maximum-pool-size:10}")

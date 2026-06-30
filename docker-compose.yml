@@ -1,0 +1,188 @@
+version: "3.9"
+
+services:
+  # Phase 1 Databases
+  iamdb:
+    image: postgres:16-alpine
+    container_name: cms_iamdb
+    environment:
+      POSTGRES_DB: iamdb
+      POSTGRES_USER: cms_iam
+      POSTGRES_PASSWORD: localpassword
+    ports:
+      - "5434:5432"
+    volumes:
+      - iamdb_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cms_iam -d iamdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  schemadb:
+    image: postgres:16-alpine
+    container_name: cms_schemadb
+    environment:
+      POSTGRES_DB: schemadb
+      POSTGRES_USER: cms_schema
+      POSTGRES_PASSWORD: localpassword
+    ports:
+      - "5435:5432"
+    volumes:
+      - schemadb_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cms_schema -d schemadb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  workflowdb:
+    image: postgres:16-alpine
+    container_name: cms_workflowdb
+    environment:
+      POSTGRES_DB: workflowdb
+      POSTGRES_USER: cms_workflow
+      POSTGRES_PASSWORD: localpassword
+    ports:
+      - "5436:5432"
+    volumes:
+      - workflowdb_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cms_workflow -d workflowdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  contentdb:
+    image: postgres:16-alpine
+    container_name: cms_contentdb
+    environment:
+      POSTGRES_DB: contentdb
+      POSTGRES_USER: cms_content
+      POSTGRES_PASSWORD: localpassword
+    ports:
+      - "5437:5432"
+    volumes:
+      - contentdb_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cms_content -d contentdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Phase 2 Databases
+  mediadb:
+    image: postgres:16-alpine
+    container_name: cms_mediadb
+    environment:
+      POSTGRES_DB: mediadb
+      POSTGRES_USER: cms_media
+      POSTGRES_PASSWORD: localpassword
+    ports:
+      - "5438:5432"
+    volumes:
+      - mediadb_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cms_media -d mediadb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  notificationdb:
+    image: postgres:16-alpine
+    container_name: cms_notificationdb
+    environment:
+      POSTGRES_DB: notificationdb
+      POSTGRES_USER: cms_notification
+      POSTGRES_PASSWORD: localpassword
+    ports:
+      - "5439:5432"
+    volumes:
+      - notificationdb_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cms_notification -d notificationdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  auditdb:
+    image: postgres:16-alpine
+    container_name: cms_auditdb
+    environment:
+      POSTGRES_DB: auditdb
+      POSTGRES_USER: cms_audit
+      POSTGRES_PASSWORD: localpassword
+    ports:
+      - "5440:5432"
+    volumes:
+      - auditdb_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cms_audit -d auditdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Phase 3 Databases
+  formdb:
+    image: postgres:16-alpine
+    container_name: cms_formdb
+    environment:
+      POSTGRES_DB: formdb
+      POSTGRES_USER: formuser
+      POSTGRES_PASSWORD: formpassword
+    ports:
+      - "5441:5432"
+    volumes:
+      - formdb_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U formuser -d formdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Shared Dependencies
+  redis:
+    image: redis:7-alpine
+    container_name: cms_redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  opensearch:
+    image: opensearchproject/opensearch:2.11.0
+    container_name: cms_opensearch
+    environment:
+      - cluster.name=cms-search-cluster
+      - node.name=cms-opensearch
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - DISABLE_SECURITY_PLUGIN=true
+      - DISABLE_INSTALL_DEMO_CONFIG=true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    ports:
+      - "9200:9200"
+      - "9600:9600"
+    volumes:
+      - opensearch_data:/usr/share/opensearch/data
+
+volumes:
+  iamdb_data:
+  schemadb_data:
+  workflowdb_data:
+  contentdb_data:
+  mediadb_data:
+  notificationdb_data:
+  auditdb_data:
+  formdb_data:
+  opensearch_data:

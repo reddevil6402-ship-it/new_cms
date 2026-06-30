@@ -53,12 +53,12 @@ function clearToken(): void {
 // ─── Auth actions ─────────────────────────────────────────────────────────────
 const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
-export async function login(email: string, password: string): Promise<JwtClaims> {
+export async function login(email: string, password: string, tenantCode: string): Promise<JwtClaims> {
   const res = await fetch(`${BASE}/api/v1/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, tenantCode }),
   });
 
   if (!res.ok) {

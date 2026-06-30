@@ -3,8 +3,7 @@ package com.cms.media.dto.response;
 import lombok.Data;
 import java.time.OffsetDateTime;
 import java.util.UUID;
-import java.util.List;
-import java.util.Map;
+
 
 @Data
 public class MediaResponse {

@@ -9,8 +9,9 @@ import Spinner from "@/components/ui/Spinner";
 
 export default function LoginPage() {
   const { login } = useAuth();
-  const [email, setEmail] = useState("admin@nextgen.local");
-  const [password, setPassword] = useState("admin123");
+  const [tenantCode, setTenantCode] = useState("cms-system");
+  const [email, setEmail] = useState("admin@cms.system");
+  const [password, setPassword] = useState("Admin@123!");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -19,7 +20,7 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
     try {
-      await login(email, password);
+      await login(email, password, tenantCode);
     } catch (err: any) {
       setError(err.message || "Login failed");
       setLoading(false);
@@ -51,12 +52,26 @@ export default function LoginPage() {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10">
         <Card glass padding="lg" className="animate-fade-in shadow-2xl">
-          <form className="space-y-6" onSubmit={handleSubmit}>
+          <form className="space-y-5" onSubmit={handleSubmit}>
             {error && (
               <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
                 <p className="text-sm text-red-400 text-center font-medium">{error}</p>
               </div>
             )}
+
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                Workspace / Tenant Code
+              </label>
+              <TextInput
+                type="text"
+                required
+                value={tenantCode}
+                onChange={(e) => setTenantCode(e.target.value)}
+                placeholder="cms-system"
+                className="h-11"
+              />
+            </div>
 
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-1.5">
@@ -67,7 +82,7 @@ export default function LoginPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@nextgen.local"
+                placeholder="admin@cms.system"
                 className="h-11"
               />
             </div>
@@ -89,7 +104,7 @@ export default function LoginPage() {
             <Button
               type="submit"
               size="xl"
-              className="w-full text-base font-bold shadow-brand-glow"
+              className="w-full text-base font-bold shadow-brand-glow mt-2"
               loading={loading}
             >
               Sign in

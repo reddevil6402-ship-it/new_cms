@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { api } from "@/lib/api";
-import { MediaFile, PagedResponse } from "@/types/cms";
+import { MediaFile } from "@/types/cms";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Spinner from "@/components/ui/Spinner";
@@ -15,8 +15,8 @@ export default function MediaPage() {
   useEffect(() => {
     async function loadMedia() {
       try {
-        const res = await api.get<PagedResponse<MediaFile>>("/api/v1/media?size=50");
-        setFiles(res.items);
+        const res = await api.get<MediaFile[]>("/api/v1/media");
+        setFiles(Array.isArray(res) ? res : []);
       } catch (err) {
         console.error(err);
       } finally {

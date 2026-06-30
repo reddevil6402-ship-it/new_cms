@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { api } from "@/lib/api";
 import { Card, CardHeader, StatCard } from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
-import { PagedResponse, ContentType, ContentItem } from "@/types/cms";
+import { ContentType, ContentItem } from "@/types/cms";
 
 export default function DashboardPage() {
   const [stats, setStats] = useState({
@@ -20,16 +20,20 @@ export default function DashboardPage() {
       try {
         // Fetch in parallel
         const [types, items, forms] = await Promise.all([
-          api.get<PagedResponse<ContentType>>("/api/v1/schemas/types?size=1"),
-          api.get<PagedResponse<ContentItem>>("/api/v1/content?size=1"),
-          api.get<PagedResponse<any>>("/api/v1/forms/definitions?size=1").catch(() => ({ total: 0 })), // Mock for forms
+          api.get<ContentType[]>("/api/v1/schema/content-types"),
+          api.get<ContentItem[]>("/api/v1/content"),
+          api.get<any[]>("/api/v1/forms/definitions").catch(() => []),
         ]);
 
+        const typesCount = Array.isArray(types) ? types.length : 0;
+        const itemsCount = Array.isArray(items) ? items.length : 0;
+        const formsCount = Array.isArray(forms) ? forms.length : 0;
+
         setStats({
-          totalContentTypes: types.total,
-          totalContentItems: items.total,
-          publishedItems: Math.floor(items.total * 0.7), // Mock calculation for now
-          totalForms: (forms as any).total ?? 0,
+          totalContentTypes: typesCount,
+          totalContentItems: itemsCount,
+          publishedItems: Math.floor(itemsCount * 0.7), // Mock calculation for now
+          totalForms: formsCount,
         });
       } catch (err) {
         console.error("Failed to load dashboard stats", err);

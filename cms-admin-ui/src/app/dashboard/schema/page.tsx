@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { api } from "@/lib/api";
-import { ContentType, PagedResponse } from "@/types/cms";
+import { ContentType } from "@/types/cms";
 import Card, { CardHeader } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
@@ -20,8 +20,8 @@ export default function SchemaPage() {
   const loadTypes = async () => {
     setLoading(true);
     try {
-      const res = await api.get<PagedResponse<ContentType>>("/api/v1/schemas/types?size=100");
-      setTypes(res.items);
+      const res = await api.get<ContentType[]>("/api/v1/schema/content-types");
+      setTypes(Array.isArray(res) ? res : []);
     } catch (err: any) {
       setError(err.message || "Failed to load schema types");
     } finally {

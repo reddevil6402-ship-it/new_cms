@@ -1,5 +1,0 @@
-spring:
-  datasource:
-    url: jdbc:postgresql://localhost:5439/notificationdb?options=-c%20timezone=UTC
-    username: cms_notification
-    password: localpassword

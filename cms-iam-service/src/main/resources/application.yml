@@ -42,9 +42,6 @@ server:
     context-path: /
 
 # RSA key pair for JWT signing (RS256)
-# Generated at startup from key files — see JwtConfig.java
-# For local dev, keys are auto-generated if not found.
-# For production, mount key files as secrets.
 cms:
   jwt:
     private-key-path: ${JWT_PRIVATE_KEY_PATH:classpath:keys/private.pem}

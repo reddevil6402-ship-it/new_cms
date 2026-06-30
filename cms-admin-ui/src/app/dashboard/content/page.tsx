@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { api } from "@/lib/api";
-import { ContentItem, PagedResponse } from "@/types/cms";
+import { ContentItem } from "@/types/cms";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import { ContentStatusBadge } from "@/components/ui/Badge";
@@ -15,8 +15,8 @@ export default function ContentPage() {
   useEffect(() => {
     async function loadContent() {
       try {
-        const res = await api.get<PagedResponse<ContentItem>>("/api/v1/content?size=100");
-        setItems(res.items);
+        const res = await api.get<ContentItem[]>("/api/v1/content");
+        setItems(Array.isArray(res) ? res : []);
       } catch (err) {
         console.error(err);
       } finally {
